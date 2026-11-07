@@ -370,10 +370,12 @@ async function bangumiDetail(id: string): Promise<DetailData> {
         name: string;
         name_cn?: string;
         relation?: string;
+        type?: number;
         images?: BgmImages;
       }[]
     >(`${base}/subjects`, { headers: BGM_HEADERS }).catch(() => []),
   ]);
+  const animeRelated = related.filter((item) => item.type === 2);
   return {
     ...empty(),
     date: subject.date || "",
@@ -384,7 +386,7 @@ async function bangumiDetail(id: string): Promise<DetailData> {
       role: item.relation || "",
       image: safeImage(item.images?.medium || item.images?.large),
     })),
-    similar: related.slice(0, 18).map(
+    similar: (animeRelated.length ? animeRelated : related).slice(0, 18).map(
       (item): Anime => ({
         id: `bangumi:${item.id}`,
         source: "bangumi",

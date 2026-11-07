@@ -25,6 +25,7 @@ import {
   sources,
   type Anime,
   type CatalogResult,
+  type DetailData,
   type Source,
 } from "@/lib/types";
 
@@ -46,24 +47,120 @@ function Poster({ anime }: { anime: Anime }) {
     </div>
   );
 }
+function CreditRow({ person }: { person: DetailData["credits"][number] }) {
+  return (
+    <li>
+      <span className="credit-avatar">
+        {person.image ? (
+          <img
+            src={person.image}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          person.name.slice(0, 1)
+        )}
+      </span>
+      <span className="credit-name">{person.name}</span>
+      <span className="credit-role">{person.role}</span>
+    </li>
+  );
+}
+
+function RelatedGrid({
+  items,
+  onPick,
+}: {
+  items: Anime[];
+  onPick: (item: Anime) => void;
+}) {
+  return (
+    <div className="related-grid">
+      {items.map((item) => (
+        <button key={item.id} onClick={() => onPick(item)}>
+          <span className="related-poster">
+            <Poster anime={item} />
+          </span>
+          <span className="related-title">{item.title}</span>
+          <span className="related-meta">
+            {item.score?.toFixed(1) || "—"} · {item.year || "—"}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const PROVIDER_KINDS = [
+  { key: "flatrate", label: "订阅" },
+  { key: "rent", label: "租借" },
+  { key: "buy", label: "购买" },
+] as const;
+
 function Detail({
   anime,
   saved,
   toggle,
   close,
+  onPick,
 }: {
   anime: Anime;
   saved: boolean;
   toggle: () => void;
   close: () => void;
+  onPick: (item: Anime) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [detail, setDetail] = useState<DetailData | null>(null);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState("reviews");
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    setDetail(null);
+    setError("");
+    setTab("reviews");
+    dialog.current?.scrollTo({ top: 0 });
+    fetch(`/api/detail?id=${encodeURIComponent(anime.id)}&locale=zh`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "详情加载失败");
+        if (!controller.signal.aborted) setDetail(data as DetailData);
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted && cause.name !== "AbortError")
+          setError(cause.message || "详情加载失败");
+      });
+    return () => controller.abort();
+  }, [anime.id]);
+  const tabs = detail
+    ? [
+        { key: "reviews", label: "评论", count: detail.reviews.length },
+        { key: "watch", label: "观看渠道", count: detail.providers.length },
+        { key: "credits", label: "演职员", count: detail.credits.length },
+        {
+          key: "recommendations",
+          label: "推荐",
+          count: detail.recommendations.length,
+        },
+        { key: "similar", label: "相似", count: detail.similar.length },
+        { key: "images", label: "图集", count: detail.images.length },
+        { key: "videos", label: "视频", count: detail.videos.length },
+      ].filter((item) => item.count > 0)
+    : [];
+  const active = tabs.some((item) => item.key === tab)
+    ? tab
+    : tabs[0]?.key || "";
+  const genres = detail?.genres.length ? detail.genres : anime.tags;
   return (
     <dialog
       ref={dialog}
+      className="detail-dialog"
       onCancel={close}
       onClick={(event) => {
         if (event.target === dialog.current) close();
@@ -77,31 +174,47 @@ function Detail({
       >
         <X size={20} />
       </button>
-      <div className="detail-layout">
-        <div className="detail-poster">
+      <div className={`detail-banner${detail?.backdrop ? "" : " is-poster"}`}>
+        <img
+          src={detail?.backdrop || anime.image}
+          alt=""
+          referrerPolicy="no-referrer"
+        />
+      </div>
+      <div className="detail-body">
+        <aside className="detail-poster-lg">
           <Poster anime={anime} />
-        </div>
-        <div>
+        </aside>
+        <article>
           <span className="eyebrow">
             {sources[anime.source]} · {anime.format}
+            {anime.year ? ` · ${anime.year}` : ""}
           </span>
           <h2 id="detail-title">{anime.title}</h2>
-          <p className="muted">{anime.originalTitle}</p>
-          <div className="detail-meta">
-            <Star size={18} fill="currentColor" />
-            <strong>{anime.score?.toFixed(1) || "暂无评分"}</strong>
-            <span>
+          {anime.originalTitle && (
+            <p className="detail-original">{anime.originalTitle}</p>
+          )}
+          <div className="detail-badges">
+            <span className="rating-badge">
+              <Star size={12} fill="currentColor" />
+              {anime.score?.toFixed(1) || "暂无评分"}
+            </span>
+            <span className="muted">
               {anime.votes == null
                 ? "评分人数未提供"
-                : `${anime.votes.toLocaleString()} 人评分`}{" "}
-              · {anime.year || "年份未知"}
+                : `${anime.votes.toLocaleString()} 人评分`}
             </span>
+            {detail?.date && <span className="muted">{detail.date}</span>}
+            {detail?.runtime && <span className="muted">{detail.runtime}</span>}
           </div>
-          <div className="tags">
-            {anime.tags.map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
+          {genres.length > 0 && (
+            <div className="tags">
+              {genres.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+          )}
+          {detail?.tagline && <p className="tagline">{detail.tagline}</p>}
           <p className="synopsis">{anime.summary || "数据源暂未提供简介。"}</p>
           <div className="detail-actions">
             <button className="primary" onClick={toggle}>
@@ -117,8 +230,164 @@ function Detail({
               来源条目 <ExternalLink size={15} />
             </a>
           </div>
-        </div>
+        </article>
       </div>
+      {error && (
+        <p className="detail-status error" role="alert">
+          {error}
+        </p>
+      )}
+      {!detail && !error && (
+        <p className="detail-status" aria-busy="true">
+          正在加载详情…
+        </p>
+      )}
+      {detail && tabs.length > 0 && (
+        <>
+          <div className="detail-tabs" role="tablist" aria-label="详情分区">
+            {tabs.map((item) => (
+              <button
+                key={item.key}
+                id={`detail-tab-${item.key}`}
+                role="tab"
+                aria-selected={active === item.key}
+                onClick={() => setTab(item.key)}
+              >
+                {item.label}
+                <span className="tab-count">{item.count}</span>
+              </button>
+            ))}
+          </div>
+          <div
+            className="detail-panel"
+            role="tabpanel"
+            aria-labelledby={`detail-tab-${active}`}
+          >
+            {active === "reviews" && (
+              <ul className="review-list">
+                {detail.reviews.map((review, index) => (
+                  <li key={`${review.author}-${index}`}>
+                    <div className="review-head">
+                      <strong>{review.author}</strong>
+                      {review.rating != null && (
+                        <span className="rating-badge">
+                          <Star size={11} fill="currentColor" />
+                          {review.rating.toFixed(1)}
+                        </span>
+                      )}
+                      <span className="muted">{review.date}</span>
+                    </div>
+                    <p>{review.content}</p>
+                    {review.url && (
+                      <a
+                        className="review-link"
+                        href={review.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        查看原文 <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {active === "watch" && (
+              <div className="provider-columns">
+                {PROVIDER_KINDS.map((kind) => {
+                  const list = detail.providers.filter(
+                    (provider) => provider.kind === kind.key,
+                  );
+                  return (
+                    <section key={kind.key}>
+                      <h3>{kind.label}</h3>
+                      {list.length === 0 ? (
+                        <p className="detail-unavailable">
+                          <X size={13} /> 暂不可用
+                        </p>
+                      ) : (
+                        <ul className="provider-list">
+                          {list.map((provider) => (
+                            <li key={`${kind.key}-${provider.name}`}>
+                              {provider.logo ? (
+                                <img
+                                  src={provider.logo}
+                                  alt=""
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <span className="provider-dot">
+                                  {provider.name.slice(0, 1)}
+                                </span>
+                              )}
+                              {provider.url ? (
+                                <a
+                                  href={provider.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {provider.name}
+                                </a>
+                              ) : (
+                                provider.name
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+            {active === "credits" && (
+              <ul className="credit-list">
+                {detail.credits.map((person, index) => (
+                  <CreditRow key={`${person.name}-${index}`} person={person} />
+                ))}
+              </ul>
+            )}
+            {active === "recommendations" && (
+              <RelatedGrid items={detail.recommendations} onPick={onPick} />
+            )}
+            {active === "similar" && (
+              <RelatedGrid items={detail.similar} onPick={onPick} />
+            )}
+            {active === "images" && (
+              <div className="image-grid">
+                {detail.images.map((url) => (
+                  <img
+                    key={url}
+                    src={url}
+                    alt=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                ))}
+              </div>
+            )}
+            {active === "videos" && (
+              <div className="video-grid">
+                {detail.videos.map((video) => (
+                  <figure key={video.key}>
+                    <iframe
+                      src={`https://www.youtube.com/embed/${video.key}?rel=0&modestbranding=1`}
+                      title={video.name}
+                      loading="lazy"
+                      allowFullScreen
+                    />
+                    <figcaption>
+                      {video.name}
+                      {video.name === video.type ? "" : ` · ${video.type}`}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </dialog>
   );
 }
@@ -564,6 +833,7 @@ export function Catalog() {
           saved={saved.some((item) => item.id === selected.id)}
           toggle={() => toggleSaved(selected)}
           close={() => setSelected(null)}
+          onPick={setSelected}
         />
       )}
     </div>
