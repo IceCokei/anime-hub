@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Bookmark,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Globe2,
@@ -90,6 +91,11 @@ export function Catalog() {
     if (!writeWatchlist(next))
       setStorageMessage("无法保存到浏览器，片单仅在本次访问中保留。");
   }
+  function rememberSource(value: Source) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("src", value);
+    window.history.replaceState(null, "", url);
+  }
   function changeSource(value: Source) {
     setSource(value);
     setPage(1);
@@ -99,6 +105,7 @@ export function Catalog() {
       setSearch("");
       setSearchInput("");
     }
+    rememberSource(value);
   }
   const items = showSaved ? saved : byNewest(result?.items || []);
   const busy = !showSaved && loading;
@@ -184,6 +191,14 @@ export function Catalog() {
               <div className="filters">
                 <label>
                   <Globe2 size={15} />
+                  <span className="filter-value">
+                    {country === "CN"
+                      ? "中国 · 国漫"
+                      : country === "JP"
+                        ? "日本动画"
+                        : "全部产地"}
+                  </span>
+                  <ChevronDown size={14} />
                   <select
                     aria-label="产地"
                     value={country}
@@ -200,6 +215,10 @@ export function Catalog() {
                 </label>
                 <label>
                   <Star size={15} />
+                  <span className="filter-value">
+                    {minScore === "0" ? "全部评分" : `${minScore} 分以上`}
+                  </span>
+                  <ChevronDown size={14} />
                   <select
                     aria-label="最低评分"
                     value={minScore}
@@ -216,6 +235,14 @@ export function Catalog() {
                 </label>
                 <label>
                   <ArrowDownWideNarrow size={15} />
+                  <span className="filter-value">
+                    {sort === "newest"
+                      ? "最新上架"
+                      : sort === "popular"
+                        ? "最多人关注"
+                        : "评分最高"}
+                  </span>
+                  <ChevronDown size={14} />
                   <select
                     aria-label="排序"
                     value={sort}

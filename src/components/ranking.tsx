@@ -80,6 +80,9 @@ export function Ranking() {
                 onClick={() => {
                   setSource(key as Source);
                   setPage(1);
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("src", key);
+                  window.history.replaceState(null, "", url);
                 }}
               >
                 {source === key && <span className="source-dot" />}

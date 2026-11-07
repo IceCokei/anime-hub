@@ -10,6 +10,13 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
+        <link
+          rel="preload"
+          href="/fonts/LemiQianHeTi.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         <link rel="preconnect" href="https://lain.bgm.tv" crossOrigin="" />
         <link rel="preconnect" href="https://img3.doubanio.com" crossOrigin="" />
         <link rel="preconnect" href="https://m.douban.com" crossOrigin="" />
