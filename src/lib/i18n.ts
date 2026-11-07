@@ -1,0 +1,148 @@
+export type Locale = "en" | "zh";
+const apiMessages: Record<string, string> = {
+  "Invalid query. Please adjust the filters.": "查询参数无效，请调整筛选条件。",
+  "Kitsu does not support reliable country filtering. Choose another source.":
+    "Kitsu 不支持可靠的产地筛选，请选择其他来源。",
+  "TMDB Discover does not support keyword search. Choose Bangumi, AniList or Kitsu.":
+    "TMDB 发现接口不支持关键词，请切换 Bangumi、AniList 或 Kitsu。",
+  "Too many requests. Please try again later.": "请求过于频繁，请稍后重试。",
+  "The source could not be reached. Retry or choose another source.":
+    "无法连接数据源，请重试或切换来源。",
+  "AniList could not complete the query. Please retry.":
+    "AniList 查询失败，请重试。",
+  "TMDB is not configured. Add TMDB_READ_TOKEN or TMDB_API_KEY as a Cloudflare Pages secret and redeploy.":
+    "TMDB 尚未配置，请在 Cloudflare Pages 中添加 TMDB_READ_TOKEN 或 TMDB_API_KEY 密钥并重新部署。",
+  "Country filtering uses Bangumi community tags and may be approximate.":
+    "产地使用 Bangumi 社区标签筛选，仅供参考。",
+  "AniList scores are converted to a 10-point scale. Rating counts are unavailable.":
+    "AniList 评分已换算为十分制；评分人数未提供。",
+  "Score sorting includes titles with at least 50 ratings.":
+    "评分排序仅包含至少 50 人评分的作品。",
+  "Kitsu country is unverified. Minimum score filters the current page; empty pages may still have a next page.":
+    "Kitsu 产地需另行核对。最低分筛选当前页，空页仍可能有下一页。",
+  "Unexpected source response. Please retry.":
+    "数据源返回了无法识别的内容，请重试。",
+};
+export function translateApi(message: string, locale: Locale): string {
+  if (locale === "en") return message;
+  const status = /^Source unavailable \(HTTP (\d+)\)/.exec(message);
+  return (
+    apiMessages[message] ||
+    (status
+      ? `数据源暂时不可用（HTTP ${status[1]}），请重试或切换来源。`
+      : message)
+  );
+}
+
+export const copy = {
+  en: {
+    brand: "Anime Hub",
+    tagline: "An open catalogue of animated worlds.",
+    explore: "Explore",
+    saved: "Watchlist",
+    language: "Language",
+    theme: "Change theme",
+    heading: "Find a story to stay with.",
+    savedHeading: "Stories for another day.",
+    intro:
+      "Browse independent catalogues. Follow your curiosity. Keep a little list.",
+    source: "Catalogue",
+    search: "Search anime",
+    searchPlaceholder: "Title or keyword",
+    searchButton: "Search",
+    discoverOnly: "Discover mode: use the filters below.",
+    country: "Country",
+    allCountries: "All countries",
+    china: "China",
+    japan: "Japan",
+    score: "Minimum score",
+    allScores: "Any score",
+    sort: "Sort by",
+    popular: "Popularity",
+    highest: "Highest score",
+    loading: "Finding stories…",
+    error: "This catalogue is unavailable.",
+    retry: "Try again",
+    empty: "No stories here yet.",
+    emptyHint:
+      "Try another search, change the filters, or save a title to your watchlist.",
+    details: "Details",
+    save: "Save",
+    remove: "Remove",
+    close: "Close details",
+    noSummary: "No synopsis available.",
+    noRating: "Unrated",
+    votes: "ratings",
+    noVotes: "Rating count unavailable",
+    unknownYear: "Year unknown",
+    original: "Original title",
+    visit: "View source",
+    previous: "Previous",
+    next: "Next",
+    page: "Page",
+    titles: "titles",
+    storage:
+      "Local storage is unavailable. Changes will only last for this visit.",
+    note: "Scores use a 10-point scale and belong to the selected source. They are not directly comparable between catalogues.",
+    attribution:
+      "Metadata and artwork belong to their respective providers and rights holders.",
+    local: "Saved in this browser",
+    network: "Request failed. Please try again.",
+    animation: "Animation",
+    movie: "Movie",
+    tv: "TV",
+  },
+  zh: {
+    brand: "映番",
+    tagline: "探索动画世界的开放目录。",
+    explore: "发现",
+    saved: "想看片单",
+    language: "语言",
+    theme: "切换主题",
+    heading: "找到让你停留的故事。",
+    savedHeading: "留给下一次的好故事。",
+    intro: "浏览独立目录，跟随好奇心，收藏你的下一部动画。",
+    source: "数据来源",
+    search: "搜索动画",
+    searchPlaceholder: "动画名称或关键词",
+    searchButton: "搜索",
+    discoverOnly: "发现模式：请使用下方筛选。",
+    country: "产地",
+    allCountries: "全部产地",
+    china: "中国 · 国漫",
+    japan: "日本",
+    score: "最低评分",
+    allScores: "全部评分",
+    sort: "排序",
+    popular: "关注热度",
+    highest: "评分最高",
+    loading: "正在寻找好故事…",
+    error: "暂时无法访问这个目录。",
+    retry: "重试",
+    empty: "这里还没有故事。",
+    emptyHint: "尝试其他关键词、调整筛选，或将作品加入想看片单。",
+    details: "详情",
+    save: "收藏",
+    remove: "取消收藏",
+    close: "关闭详情",
+    noSummary: "暂无简介。",
+    noRating: "暂无评分",
+    votes: "人评分",
+    noVotes: "未提供评分人数",
+    unknownYear: "年份未知",
+    original: "原标题",
+    visit: "查看来源",
+    previous: "上一页",
+    next: "下一页",
+    page: "页码",
+    titles: "部作品",
+    storage: "本地存储不可用，更改仅在本次访问中保留。",
+    note: "评分统一为十分制，属于当前来源；不同目录的分数不直接比较。",
+    attribution: "资料和图片属于对应来源及其权利人。",
+    local: "保存在当前浏览器",
+    network: "请求失败，请重试。",
+    animation: "动画",
+    movie: "电影",
+    tv: "剧集",
+  },
+};

@@ -1,0 +1,56 @@
+# Dependencies and generated build output
+node_modules/
+.next/
+out/
+dist/
+.wrangler/
+.vercel/
+.turbo/
+.cache/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local credentials and machine-specific configuration
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+.npmrc
+.netrc
+.wranglerrc
+*.pem
+*.key
+*.p12
+*.pfx
+.ssh/
+.aws/
+.config/
+.vscode/
+.idea/
+.agents/
+.codex/
+
+# Local verification and research output
+tests/
+test-results/
+playwright-report/
+playwright.config.*
+artifacts/
+reports/
+notes/
+issues/
+*.log
+*.har
+*.pcap
+
+# macOS and editor metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100/
+.Trashes/
+*.swp
+*.swo
+*~
