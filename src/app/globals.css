@@ -613,12 +613,12 @@ dialog::backdrop {
     padding: 8px;
   }
   .rail-bottom .outline {
-    font-size: 0;
+    font-size: 15px;
     padding: 8px;
     min-height: 33px;
   }
-  .rail-bottom .outline:first-letter {
-    font-size: 15px;
+  .rail-bottom .theme-label {
+    display: none;
   }
   .content {
     padding: 22px 20px;

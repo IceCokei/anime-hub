@@ -264,12 +264,14 @@ export function Catalog() {
           </label>
           <button
             className="outline"
+            aria-label={text.theme}
             onClick={() => {
               setDark(!dark);
               persist("anime-hub:theme", dark ? "light" : "dark");
             }}
           >
-            {dark ? "☀" : "◐"} {text.theme}
+            <span aria-hidden="true">{dark ? "☀" : "◐"}</span>
+            <span className="theme-label"> {text.theme}</span>
           </button>
           <small>OPEN CATALOGUE / 01</small>
         </div>
