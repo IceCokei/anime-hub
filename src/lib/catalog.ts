@@ -126,6 +126,10 @@ type BangumiSubject = {
   rating?: { score?: number; total?: number };
   tags?: { name: string }[];
 };
+const withinWindow = (date?: string | null) => {
+  const year = Number.parseInt((date || "").slice(0, 4), 10);
+  return !Number.isFinite(year) || year <= new Date().getFullYear() + 2;
+};
 const bangumiItem = (item: BangumiSubject, locale: "en" | "zh"): Anime => ({
   id: `bangumi:${item.id}`,
   source: "bangumi",
@@ -143,8 +147,10 @@ const bangumiItem = (item: BangumiSubject, locale: "en" | "zh"): Anime => ({
 async function bangumi(query: CatalogQuery): Promise<CatalogResult> {
   if (query.sort === "rank" || query.sort === "newest") {
     const order = query.sort === "newest" ? "date" : "rank";
+    // The date feed leads with titles further out than the window, so fetch slack.
+    const limit = query.sort === "newest" ? PAGE_SIZE + 5 : PAGE_SIZE;
     const ranking = await request<{ data: BangumiSubject[]; total: number }>(
-      `https://api.bgm.tv/v0/subjects?type=2&sort=${order}&limit=${PAGE_SIZE}&offset=${(query.page - 1) * PAGE_SIZE}`,
+      `https://api.bgm.tv/v0/subjects?type=2&sort=${order}&limit=${limit}&offset=${(query.page - 1) * PAGE_SIZE}`,
       {
         headers: {
           "User-Agent": "AnimeHub/1.0 (anime catalog; Next.js)",
@@ -152,7 +158,10 @@ async function bangumi(query: CatalogQuery): Promise<CatalogResult> {
       },
     );
     return {
-      items: ranking.data.map((item) => bangumiItem(item, query.locale)),
+      items: ranking.data
+        .filter((item) => withinWindow(item.date))
+        .slice(0, PAGE_SIZE)
+        .map((item) => bangumiItem(item, query.locale)),
       page: query.page,
       total: ranking.total,
       hasNext: query.page * PAGE_SIZE < Math.min(ranking.total, 1000),
@@ -404,7 +413,8 @@ async function douban(query: CatalogQuery): Promise<CatalogResult> {
   const params = new URLSearchParams({
     refresh: "0",
     start: String((query.page - 1) * PAGE_SIZE),
-    count: String(PAGE_SIZE),
+    // Douban pads each page with chart cards we drop, so ask for a few extra.
+    count: String(PAGE_SIZE + 5),
     selected_categories: "{}",
     uncollect: "false",
     tags: "动画",
@@ -419,6 +429,8 @@ async function douban(query: CatalogQuery): Promise<CatalogResult> {
   return {
     items: (response.items || [])
       .filter((item) => item.id && item.rating)
+      .filter((item) => withinWindow(item.year ? `${item.year}-01-01` : ""))
+      .slice(0, PAGE_SIZE)
       .map(doubanSubject),
     page: query.page,
     total,

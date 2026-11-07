@@ -26,7 +26,8 @@ import {
   type Source,
 } from "@/lib/types";
 
-const detailLink = (anime: Anime) => `/anime?id=${encodeURIComponent(anime.id)}`;
+const detailLink = (anime: Anime) =>
+  `/anime?id=${encodeURIComponent(anime.id)}&src=${anime.source}`;
 
 export function Catalog() {
   const [source, setSource] = useState<Source>("bangumi");
@@ -43,11 +44,16 @@ export function Catalog() {
   const [saved, setSaved] = useState<Anime[]>([]);
   const [showSaved, setShowSaved] = useState(false);
   const [storageMessage, setStorageMessage] = useState("");
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     setSaved(loadWatchlist());
+    const requested = new URLSearchParams(window.location.search).get("src");
+    if (requested && Object.hasOwn(sources, requested))
+      setSource(requested as Source);
+    setReady(true);
   }, []);
   useEffect(() => {
-    if (showSaved) return;
+    if (!ready || showSaved) return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -75,7 +81,7 @@ export function Catalog() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [source, search, country, sort, minScore, page, retry, showSaved]);
+  }, [ready, source, search, country, sort, minScore, page, retry, showSaved]);
   function toggleSaved(anime: Anime) {
     const next = saved.some((item) => item.id === anime.id)
       ? saved.filter((item) => item.id !== anime.id)

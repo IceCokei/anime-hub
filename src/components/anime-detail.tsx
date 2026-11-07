@@ -13,6 +13,7 @@ import {
 import { Poster } from "./poster";
 import { fetchJson } from "@/lib/client";
 import { SiteFooter, SiteHeader } from "./site-chrome";
+import { imageUrl } from "@/lib/image";
 import { loadWatchlist, writeWatchlist } from "@/lib/watchlist";
 import {
   sources,
@@ -28,8 +29,8 @@ const PROVIDER_KINDS = [
 ] as const;
 
 type Origin = "discover" | "ranking";
-const detailLink = (item: Anime, from: Origin) =>
-  `/anime?id=${encodeURIComponent(item.id)}${from === "ranking" ? "&from=ranking" : ""}`;
+const detailLink = (item: Anime, from: Origin, src: string) =>
+  `/anime?id=${encodeURIComponent(item.id)}${from === "ranking" ? "&from=ranking" : ""}${src ? `&src=${encodeURIComponent(src)}` : ""}`;
 
 function CreditRow({ person }: { person: DetailData["credits"][number] }) {
   return (
@@ -52,11 +53,19 @@ function CreditRow({ person }: { person: DetailData["credits"][number] }) {
   );
 }
 
-function RelatedGrid({ items, from }: { items: Anime[]; from: Origin }) {
+function RelatedGrid({
+  items,
+  from,
+  src,
+}: {
+  items: Anime[];
+  from: Origin;
+  src: string;
+}) {
   return (
     <div className="related-grid">
       {items.map((item) => (
-        <a key={item.id} href={detailLink(item, from)}>
+        <a key={item.id} href={detailLink(item, from, src)}>
           <span className="related-poster">
             <Poster anime={item} />
           </span>
@@ -74,6 +83,10 @@ export function AnimeDetail() {
   const params = useSearchParams();
   const id = params.get("id") || "";
   const from: Origin = params.get("from") === "ranking" ? "ranking" : "discover";
+  const src = params.get("src") || "";
+  const backHref = `${from === "ranking" ? "/ranking" : "/"}${
+    src ? `?src=${encodeURIComponent(src)}` : ""
+  }`;
   const [data, setData] = useState<DetailResult | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("reviews");
@@ -146,10 +159,7 @@ export function AnimeDetail() {
     <div className="site-shell">
       <SiteHeader active={from} savedCount={saved.length} />
       <main className="detail-page">
-        <a
-          className="detail-back"
-          href={from === "ranking" ? "/ranking" : "/"}
-        >
+        <a className="detail-back" href={backHref}>
           <ArrowLeft size={15} />
           {from === "ranking" ? "返回排行榜" : "返回目录"}
         </a>
@@ -163,7 +173,7 @@ export function AnimeDetail() {
               className={`detail-banner${detail?.backdrop ? "" : " is-poster"}`}
             >
               <img
-                src={detail?.backdrop || item.image}
+                src={imageUrl(detail?.backdrop || item.image)}
                 alt=""
                 fetchPriority="high"
                 decoding="async"
@@ -347,10 +357,18 @@ export function AnimeDetail() {
                       </ul>
                     )}
                     {active === "recommendations" && (
-                      <RelatedGrid items={detail.recommendations} from={from} />
+                      <RelatedGrid
+                        items={detail.recommendations}
+                        from={from}
+                        src={src}
+                      />
                     )}
                     {active === "similar" && (
-                      <RelatedGrid items={detail.similar} from={from} />
+                      <RelatedGrid
+                        items={detail.similar}
+                        from={from}
+                        src={src}
+                      />
                     )}
                     {active === "images" && (
                       <div className="image-grid">

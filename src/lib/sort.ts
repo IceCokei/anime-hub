@@ -8,8 +8,7 @@ const yearOf = (item: Anime) => {
 };
 
 export function byNewest(items: Anime[]): Anime[] {
-  const limit = new Date().getFullYear() + MAX_YEARS_AHEAD;
   return items
-    .filter((item) => yearOf(item) <= limit)
+    .filter((item) => yearOf(item) <= new Date().getFullYear() + MAX_YEARS_AHEAD)
     .sort((a, b) => yearOf(b) - yearOf(a));
 }

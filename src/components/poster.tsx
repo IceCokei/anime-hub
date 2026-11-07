@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Film } from "lucide-react";
+import { imageUrl } from "@/lib/image";
 import type { Anime } from "@/lib/types";
 
 export function Poster({
@@ -12,9 +13,10 @@ export function Poster({
   priority?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
-  return anime.image && !failed ? (
+  const src = imageUrl(anime.image);
+  return src && !failed ? (
     <img
-      src={anime.image}
+      src={src}
       alt={anime.title}
       loading={priority ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : "auto"}

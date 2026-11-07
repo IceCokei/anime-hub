@@ -20,8 +20,17 @@ export function Ranking() {
   const [result, setResult] = useState<CatalogResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("src");
+    if (requested && Object.hasOwn(sources, requested))
+      setSource(requested as Source);
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -46,7 +55,7 @@ export function Ranking() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [source, page]);
+  }, [ready, source, page]);
 
   const items = byNewest(result?.items || []);
   const offset = (page - 1) * (items.length || PAGE_SIZE);
@@ -107,7 +116,7 @@ export function Ranking() {
               <li key={item.id}>
                 <a
                   className="rank-row"
-                  href={`/anime?id=${encodeURIComponent(item.id)}&from=ranking`}
+                  href={`/anime?id=${encodeURIComponent(item.id)}&from=ranking&src=${item.source}`}
                 >
                   <span className="rank-no">{offset + index + 1}</span>
                   <span className="rank-poster">
