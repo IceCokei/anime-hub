@@ -12,7 +12,11 @@ export async function fetchJson<T>(
   for (let attempt = 0; attempt < 2; attempt++) {
     let retry = true;
     try {
-      const response = await fetch(url, init);
+      const target =
+        attempt === 0
+          ? url
+          : `${url}${url.includes("?") ? "&" : "?"}_r=${Date.now()}`;
+      const response = await fetch(target, init);
       const text = await response.text();
       let payload: unknown = null;
       let parsed = false;
@@ -21,7 +25,7 @@ export async function fetchJson<T>(
         parsed = true;
       } catch {}
       if (!response.ok) {
-        retry = false;
+        retry = response.status === 429 || response.status >= 500;
         const detail = parsed ? (payload as { error?: string })?.error : "";
         throw new Error(
           detail || `加载失败（HTTP ${response.status}），请稍后重试。`,

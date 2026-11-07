@@ -106,11 +106,11 @@ export function Ranking() {
               <li key={item.id}>
                 <a
                   className="rank-row"
-                  href={`/anime?id=${encodeURIComponent(item.id)}`}
+                  href={`/anime?id=${encodeURIComponent(item.id)}&from=ranking`}
                 >
                   <span className="rank-no">{offset + index + 1}</span>
                   <span className="rank-poster">
-                    <Poster anime={item} thumb priority={index < 8} />
+                    <Poster anime={item} priority={index < 8} />
                   </span>
                   <span className="rank-main">
                     <span className="rank-title">{item.title}</span>

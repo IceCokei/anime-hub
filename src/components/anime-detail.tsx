@@ -27,7 +27,9 @@ const PROVIDER_KINDS = [
   { key: "buy", label: "购买" },
 ] as const;
 
-const detailLink = (item: Anime) => `/anime?id=${encodeURIComponent(item.id)}`;
+type Origin = "discover" | "ranking";
+const detailLink = (item: Anime, from: Origin) =>
+  `/anime?id=${encodeURIComponent(item.id)}${from === "ranking" ? "&from=ranking" : ""}`;
 
 function CreditRow({ person }: { person: DetailData["credits"][number] }) {
   return (
@@ -50,13 +52,13 @@ function CreditRow({ person }: { person: DetailData["credits"][number] }) {
   );
 }
 
-function RelatedGrid({ items }: { items: Anime[] }) {
+function RelatedGrid({ items, from }: { items: Anime[]; from: Origin }) {
   return (
     <div className="related-grid">
       {items.map((item) => (
-        <a key={item.id} href={detailLink(item)}>
+        <a key={item.id} href={detailLink(item, from)}>
           <span className="related-poster">
-            <Poster anime={item} thumb />
+            <Poster anime={item} />
           </span>
           <span className="related-title">{item.title}</span>
           <span className="related-meta">
@@ -69,7 +71,9 @@ function RelatedGrid({ items }: { items: Anime[] }) {
 }
 
 export function AnimeDetail() {
-  const id = useSearchParams().get("id") || "";
+  const params = useSearchParams();
+  const id = params.get("id") || "";
+  const from: Origin = params.get("from") === "ranking" ? "ranking" : "discover";
   const [data, setData] = useState<DetailResult | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("reviews");
@@ -140,10 +144,14 @@ export function AnimeDetail() {
 
   return (
     <div className="site-shell">
-      <SiteHeader active="discover" savedCount={saved.length} />
+      <SiteHeader active={from} savedCount={saved.length} />
       <main className="detail-page">
-        <a className="detail-back" href="/">
-          <ArrowLeft size={15} /> 返回目录
+        <a
+          className="detail-back"
+          href={from === "ranking" ? "/ranking" : "/"}
+        >
+          <ArrowLeft size={15} />
+          {from === "ranking" ? "返回排行榜" : "返回目录"}
         </a>
         {!item ? (
           <p className={error ? "detail-status error" : "detail-status"}>
@@ -339,10 +347,10 @@ export function AnimeDetail() {
                       </ul>
                     )}
                     {active === "recommendations" && (
-                      <RelatedGrid items={detail.recommendations} />
+                      <RelatedGrid items={detail.recommendations} from={from} />
                     )}
                     {active === "similar" && (
-                      <RelatedGrid items={detail.similar} />
+                      <RelatedGrid items={detail.similar} from={from} />
                     )}
                     {active === "images" && (
                       <div className="image-grid">

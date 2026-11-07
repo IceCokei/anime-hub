@@ -57,30 +57,48 @@ export function parseQuery(params: URLSearchParams): CatalogQuery {
     search,
   };
 }
+const UNREACHABLE =
+  "The source could not be reached. Retry or choose another source.";
+const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
 export async function request<T>(
   url: string,
   init: RequestInit = {},
 ): Promise<T> {
-  try {
-    const response = await fetch(url, {
-      ...init,
-      signal: AbortSignal.timeout(15000),
-      headers: { Accept: "application/json", ...init.headers },
-    });
-    if (!response.ok)
-      throw new CatalogError(
+  let message = UNREACHABLE;
+  let status = 502;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await pause(200 * attempt);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(7000),
+        headers: { Accept: "application/json", ...init.headers },
+      });
+    } catch {
+      message = UNREACHABLE;
+      status = 502;
+      continue;
+    }
+    if (!response.ok) {
+      status = response.status === 429 ? 429 : 502;
+      message =
         response.status === 429
           ? "Too many requests. Please try again later."
-          : `Source unavailable (HTTP ${response.status}). Retry or choose another source.`,
-        response.status === 429 ? 429 : 502,
-      );
-    return (await response.json()) as T;
-  } catch (error) {
-    if (error instanceof CatalogError) throw error;
-    throw new CatalogError(
-      "The source could not be reached. Retry or choose another source.",
-    );
+          : `Source unavailable (HTTP ${response.status}). Retry or choose another source.`;
+      // Upstream 5xx and rate limits are usually transient: try again.
+      if (response.status === 429 || response.status >= 500) continue;
+      throw new CatalogError(message, status);
+    }
+    try {
+      return (await response.json()) as T;
+    } catch {
+      message = UNREACHABLE;
+      status = 502;
+    }
   }
+  throw new CatalogError(message, status);
 }
 export const safeImage = (value?: string | null) =>
   value?.startsWith("https://") ? value : "";

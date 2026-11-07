@@ -318,7 +318,7 @@ export function Catalog() {
                         href={detailLink(anime)}
                         aria-label={`查看 ${anime.title}`}
                       >
-                        <Poster anime={anime} thumb priority={index < 8} />
+                        <Poster anime={anime} priority={index < 8} />
                         <span className="poster-shade" />
                         <span className="poster-format">{anime.format}</span>
                         <span className="poster-detail">
