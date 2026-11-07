@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { Poster } from "./poster";
+import { fetchJson } from "@/lib/client";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 import {
   sources,
@@ -30,10 +31,10 @@ export function Ranking() {
       page: String(page),
       locale: "zh",
     });
-    fetch(`/api/anime?${params}`, { signal: controller.signal })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "加载失败");
+    fetchJson<CatalogResult>(`/api/anime?${params}`, {
+      signal: controller.signal,
+    })
+      .then((data) => {
         if (!controller.signal.aborted) setResult(data);
       })
       .catch((cause) => {
@@ -109,7 +110,7 @@ export function Ranking() {
                 >
                   <span className="rank-no">{offset + index + 1}</span>
                   <span className="rank-poster">
-                    <Poster anime={item} />
+                    <Poster anime={item} thumb priority={index < 8} />
                   </span>
                   <span className="rank-main">
                     <span className="rank-title">{item.title}</span>

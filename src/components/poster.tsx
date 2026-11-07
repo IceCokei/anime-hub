@@ -4,13 +4,27 @@ import { useState } from "react";
 import { Film } from "lucide-react";
 import type { Anime } from "@/lib/types";
 
-export function Poster({ anime }: { anime: Anime }) {
+// Bangumi ships several sizes; the list only needs the small one.
+const thumbUrl = (url: string) => url.replace("/pic/cover/l/", "/pic/cover/c/");
+
+export function Poster({
+  anime,
+  priority = false,
+  thumb = false,
+}: {
+  anime: Anime;
+  priority?: boolean;
+  thumb?: boolean;
+}) {
   const [failed, setFailed] = useState(false);
-  return anime.image && !failed ? (
+  const src = thumb ? thumbUrl(anime.image) : anime.image;
+  return src && !failed ? (
     <img
-      src={anime.image}
+      src={src}
       alt={anime.title}
-      loading="lazy"
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : "auto"}
+      decoding="async"
       referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
     />

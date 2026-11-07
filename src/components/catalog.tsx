@@ -15,6 +15,7 @@ import {
   Star,
 } from "lucide-react";
 import { Poster } from "./poster";
+import { fetchJson } from "@/lib/client";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 import { loadWatchlist, writeWatchlist } from "@/lib/watchlist";
 import {
@@ -59,10 +60,10 @@ export function Catalog() {
       page: String(page),
       locale: "zh",
     });
-    fetch(`/api/anime?${params}`, { signal: controller.signal })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "加载失败");
+    fetchJson<CatalogResult>(`/api/anime?${params}`, {
+      signal: controller.signal,
+    })
+      .then((data) => {
         if (!controller.signal.aborted) setResult(data);
       })
       .catch((cause) => {
@@ -317,7 +318,7 @@ export function Catalog() {
                         href={detailLink(anime)}
                         aria-label={`查看 ${anime.title}`}
                       >
-                        <Poster anime={anime} />
+                        <Poster anime={anime} thumb priority={index < 8} />
                         <span className="poster-shade" />
                         <span className="poster-format">{anime.format}</span>
                         <span className="poster-detail">

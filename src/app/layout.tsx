@@ -9,7 +9,15 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <link rel="preconnect" href="https://lain.bgm.tv" crossOrigin="" />
+        <link rel="preconnect" href="https://s4.anilist.co" crossOrigin="" />
+        <link rel="preconnect" href="https://image.tmdb.org" crossOrigin="" />
+        <link rel="preconnect" href="https://media.kitsu.app" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://lain.bgm.tv" />
+        <link rel="dns-prefetch" href="https://s4.anilist.co" />
+        {children}
+      </body>
     </html>
   );
 }

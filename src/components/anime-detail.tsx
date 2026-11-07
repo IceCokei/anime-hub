@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { Poster } from "./poster";
+import { fetchJson } from "@/lib/client";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 import { loadWatchlist, writeWatchlist } from "@/lib/watchlist";
 import {
@@ -55,7 +56,7 @@ function RelatedGrid({ items }: { items: Anime[] }) {
       {items.map((item) => (
         <a key={item.id} href={detailLink(item)}>
           <span className="related-poster">
-            <Poster anime={item} />
+            <Poster anime={item} thumb />
           </span>
           <span className="related-title">{item.title}</span>
           <span className="related-meta">
@@ -87,13 +88,12 @@ export function AnimeDetail() {
     setData(null);
     setError("");
     setTab("reviews");
-    fetch(`/api/detail?id=${encodeURIComponent(id)}&locale=zh`, {
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "详情加载失败");
-        if (!controller.signal.aborted) setData(payload as DetailResult);
+    fetchJson<DetailResult>(
+      `/api/detail?id=${encodeURIComponent(id)}&locale=zh`,
+      { signal: controller.signal },
+    )
+      .then((payload) => {
+        if (!controller.signal.aborted) setData(payload);
       })
       .catch((cause) => {
         if (!controller.signal.aborted && cause.name !== "AbortError")
@@ -157,13 +157,15 @@ export function AnimeDetail() {
               <img
                 src={detail?.backdrop || item.image}
                 alt=""
+                fetchPriority="high"
+                decoding="async"
                 referrerPolicy="no-referrer"
               />
             </div>
             <section className="detail-wrap">
               <div className="detail-head">
                 <aside className="detail-poster-lg">
-                  <Poster anime={item} />
+                  <Poster anime={item} priority />
                 </aside>
                 <article>
                   <span className="eyebrow">
