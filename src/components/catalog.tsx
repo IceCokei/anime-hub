@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Poster } from "./poster";
 import { fetchJson } from "@/lib/client";
+import { byNewest } from "@/lib/sort";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 import { loadWatchlist, writeWatchlist } from "@/lib/watchlist";
 import {
@@ -32,7 +33,7 @@ export function Catalog() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [country, setCountry] = useState("");
-  const [sort, setSort] = useState("popular");
+  const [sort, setSort] = useState("newest");
   const [minScore, setMinScore] = useState("0");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<CatalogResult | null>(null);
@@ -93,7 +94,7 @@ export function Catalog() {
       setSearchInput("");
     }
   }
-  const items = showSaved ? saved : result?.items || [];
+  const items = showSaved ? saved : byNewest(result?.items || []);
   const busy = !showSaved && loading;
   return (
     <div className="site-shell">
@@ -180,7 +181,7 @@ export function Catalog() {
                   <select
                     aria-label="产地"
                     value={country}
-                    disabled={source === "kitsu"}
+                    disabled={source === "kitsu" || source === "douban"}
                     onChange={(event) => {
                       setCountry(event.target.value);
                       setPage(1);
@@ -217,6 +218,7 @@ export function Catalog() {
                       setPage(1);
                     }}
                   >
+                    <option value="newest">最新上架</option>
                     <option value="popular">最多人关注</option>
                     <option value="score">评分最高</option>
                   </select>
@@ -234,9 +236,11 @@ export function Catalog() {
                   ? `“${search}” 的搜索结果`
                   : country === "CN"
                     ? "国漫，正在发光"
-                    : sort === "score"
-                      ? "经得起时间的好作品"
-                      : "大家都在看"}
+                    : sort === "newest"
+                      ? "最新上架"
+                      : sort === "score"
+                        ? "经得起时间的好作品"
+                        : "大家都在看"}
             </h2>
             <span>
               {showSaved

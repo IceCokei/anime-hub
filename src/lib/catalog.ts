@@ -33,7 +33,7 @@ export function parseQuery(params: URLSearchParams): CatalogQuery {
     minScore < 0 ||
     minScore > 10 ||
     !["", "CN", "JP"].includes(country) ||
-    !["popular", "score", "rank"].includes(sort) ||
+    !["popular", "score", "rank", "newest"].includes(sort) ||
     search.length > 100
   )
     throw new CatalogError("Invalid query. Please adjust the filters.", 400);
@@ -44,7 +44,7 @@ export function parseQuery(params: URLSearchParams): CatalogQuery {
     );
   if (source.startsWith("tmdb") && search)
     throw new CatalogError(
-      "TMDB Discover does not support keyword search. Choose Bangumi, AniList or Kitsu.",
+      "TMDB Discover does not support keyword search. Choose Bangumi, Douban or Kitsu.",
       400,
     );
   return {
@@ -141,9 +141,10 @@ const bangumiItem = (item: BangumiSubject, locale: "en" | "zh"): Anime => ({
   url: `https://bgm.tv/subject/${item.id}`,
 });
 async function bangumi(query: CatalogQuery): Promise<CatalogResult> {
-  if (query.sort === "rank") {
+  if (query.sort === "rank" || query.sort === "newest") {
+    const order = query.sort === "newest" ? "date" : "rank";
     const ranking = await request<{ data: BangumiSubject[]; total: number }>(
-      `https://api.bgm.tv/v0/subjects?type=2&sort=rank&limit=${PAGE_SIZE}&offset=${(query.page - 1) * PAGE_SIZE}`,
+      `https://api.bgm.tv/v0/subjects?type=2&sort=${order}&limit=${PAGE_SIZE}&offset=${(query.page - 1) * PAGE_SIZE}`,
       {
         headers: {
           "User-Agent": "AnimeHub/1.0 (anime catalog; Next.js)",
@@ -155,7 +156,10 @@ async function bangumi(query: CatalogQuery): Promise<CatalogResult> {
       page: query.page,
       total: ranking.total,
       hasNext: query.page * PAGE_SIZE < Math.min(ranking.total, 1000),
-      note: "Bangumi 排行榜使用站内加权排名，评分人数过少的条目不参与排序。",
+      note:
+        query.sort === "newest"
+          ? "Bangumi 按上映时间倒序，含已定档的未上映作品。"
+          : "Bangumi 排行榜使用站内加权排名，评分人数过少的条目不参与排序。",
     };
   }
   const response = await request<{ data: BangumiSubject[]; total: number }>(
@@ -190,70 +194,6 @@ async function bangumi(query: CatalogQuery): Promise<CatalogResult> {
       : undefined,
   };
 }
-type AniListMedia = {
-  id: number;
-  title: { native?: string; romaji?: string; english?: string };
-  coverImage?: { extraLarge?: string };
-  description?: string;
-  averageScore?: number;
-  startDate?: { year?: number };
-  format?: string;
-  genres?: string[];
-};
-async function anilist(query: CatalogQuery): Promise<CatalogResult> {
-  const response = await request<{
-    errors?: unknown[];
-    data?: {
-      Page: { pageInfo: { hasNextPage: boolean }; media: AniListMedia[] };
-    };
-  }>("https://graphql.anilist.co", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": "AnimeHub/1.0 (anime catalog; Next.js)",
-    },
-    body: JSON.stringify({
-      query: `query ($page: Int, $search: String, $country: CountryCode, $sort: [MediaSort], $min: Int) { Page(page: $page, perPage: 24) { pageInfo { hasNextPage } media(type: ANIME, isAdult: false, search: $search, countryOfOrigin: $country, sort: $sort, averageScore_greater: $min) { id title { native romaji english } coverImage { extraLarge } description(asHtml: false) averageScore startDate { year } format genres } } }`,
-      variables: {
-        page: query.page,
-        search: query.search || undefined,
-        country: query.country || undefined,
-        sort: [query.sort === "popular" ? "POPULARITY_DESC" : "SCORE_DESC"],
-        min: query.minScore ? Math.ceil(query.minScore * 10) - 1 : undefined,
-      },
-    }),
-  });
-  if (response.errors || !response.data)
-    throw new CatalogError(
-      "AniList could not complete the query. Please retry.",
-    );
-  return {
-    items: response.data.Page.media.map(
-      (item): Anime => ({
-        id: `anilist:${item.id}`,
-        source: "anilist",
-        title:
-          (query.locale === "en"
-            ? item.title.english || item.title.romaji
-            : item.title.native) ||
-          item.title.native ||
-          "Untitled",
-        originalTitle: item.title.romaji || "",
-        image: safeImage(item.coverImage?.extraLarge),
-        summary: plainText(item.description),
-        score: score(item.averageScore, 10),
-        votes: null,
-        year: String(item.startDate?.year || ""),
-        format: item.format || "Animation",
-        tags: item.genres || [],
-        url: `https://anilist.co/anime/${item.id}`,
-      }),
-    ),
-    page: query.page,
-    hasNext: response.data.Page.pageInfo.hasNextPage,
-    note: "AniList scores are converted to a 10-point scale. Rating counts are unavailable.",
-  };
-}
 type TmdbMedia = {
   id: number;
   title?: string;
@@ -285,9 +225,16 @@ async function tmdb(
     with_genres: "16",
     include_adult: "false",
     sort_by:
-      query.sort === "popular" ? "popularity.desc" : "vote_average.desc",
+      query.sort === "newest"
+        ? type === "movie"
+          ? "primary_release_date.desc"
+          : "first_air_date.desc"
+        : query.sort === "popular"
+          ? "popularity.desc"
+          : "vote_average.desc",
     "vote_average.gte": String(query.minScore),
-    "vote_count.gte": query.sort === "popular" ? "0" : "50",
+    "vote_count.gte":
+      query.sort === "score" || query.sort === "rank" ? "50" : "0",
   });
   if (query.country) params.set("with_origin_country", query.country);
   if (!token && key) params.set("api_key", key);
@@ -343,7 +290,12 @@ async function kitsu(query: CatalogQuery): Promise<CatalogResult> {
   const params = new URLSearchParams({
     "page[limit]": String(PAGE_SIZE),
     "page[offset]": String((query.page - 1) * PAGE_SIZE),
-    sort: query.sort === "popular" ? "-userCount" : "-averageRating",
+    sort:
+      query.sort === "newest"
+        ? "-startDate"
+        : query.sort === "popular"
+          ? "-userCount"
+          : "-averageRating",
   });
   if (query.search) params.set("filter[text]", query.search);
   const response = await request<{
@@ -382,14 +334,108 @@ async function kitsu(query: CatalogQuery): Promise<CatalogResult> {
     note: "Kitsu country is unverified. Minimum score filters the current page; empty pages may still have a next page.",
   };
 }
+/* ---------- Douban ---------- */
+const DOUBAN_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
+  Referer: "https://m.douban.com/",
+};
+type DoubanSubject = {
+  id?: string;
+  title?: string;
+  year?: string;
+  card_subtitle?: string;
+  rating?: { value?: number; count?: number };
+  pic?: { large?: string; normal?: string };
+};
+type DoubanSuggestion = {
+  id: string;
+  title: string;
+  sub_title?: string;
+  year?: string;
+  img?: string;
+  type?: string;
+};
+const doubanSubject = (item: DoubanSubject): Anime => ({
+  id: `douban:${item.id}`,
+  source: "douban",
+  title: item.title || "Untitled",
+  originalTitle: "",
+  image: safeImage(item.pic?.large || item.pic?.normal),
+  summary: "",
+  score: score(item.rating?.value),
+  votes: item.rating?.count ?? null,
+  year: item.year || item.card_subtitle?.slice(0, 4) || "",
+  format: "Animation",
+  tags: [],
+  url: `https://movie.douban.com/subject/${item.id}/`,
+});
+async function douban(query: CatalogQuery): Promise<CatalogResult> {
+  if (query.search) {
+    const list = await request<DoubanSuggestion[]>(
+      `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(query.search)}`,
+      { headers: DOUBAN_HEADERS },
+    );
+    return {
+      items: list
+        .filter((item) => item.id && item.title)
+        .slice(0, PAGE_SIZE)
+        .map(
+          (item): Anime => ({
+            id: `douban:${item.id}`,
+            source: "douban",
+            title: item.title,
+            originalTitle: item.sub_title || "",
+            image: safeImage(item.img),
+            summary: "",
+            score: null,
+            votes: null,
+            year: item.year || "",
+            format: item.type === "tv" ? "TV" : "Movie",
+            tags: [],
+            url: `https://movie.douban.com/subject/${item.id}/`,
+          }),
+        ),
+      page: query.page,
+      hasNext: false,
+      note: "豆瓣搜索只返回建议条目，不含评分与简介。",
+    };
+  }
+  const params = new URLSearchParams({
+    refresh: "0",
+    start: String((query.page - 1) * PAGE_SIZE),
+    count: String(PAGE_SIZE),
+    selected_categories: "{}",
+    uncollect: "false",
+    tags: "动画",
+    sort:
+      query.sort === "newest" ? "R" : query.sort === "popular" ? "T" : "S",
+  });
+  const response = await request<{ items?: DoubanSubject[]; total?: number }>(
+    `https://m.douban.com/rexxar/api/v2/movie/recommend?${params}`,
+    { headers: DOUBAN_HEADERS },
+  );
+  const total = response.total || 0;
+  return {
+    items: (response.items || [])
+      .filter((item) => item.id && item.rating)
+      .map(doubanSubject),
+    page: query.page,
+    total,
+    hasNext: total > 0 && query.page * PAGE_SIZE < total,
+    note: query.country
+      ? "豆瓣不支持产地筛选，已忽略该条件。"
+      : "豆瓣按「动画」标签推荐，评分来自豆瓣。",
+  };
+}
 export async function getCatalog(
   query: CatalogQuery,
   env: CatalogEnv = {},
 ): Promise<CatalogResult> {
   const result = await (query.source === "bangumi"
     ? bangumi(query)
-    : query.source === "anilist"
-      ? anilist(query)
+    : query.source === "douban"
+      ? douban(query)
       : query.source === "kitsu"
         ? kitsu(query)
         : tmdb(query, env));

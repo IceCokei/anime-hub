@@ -272,7 +272,7 @@ p {
   align-items: center;
   gap: 12px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 999px;
   min-width: 0;
   flex: 1;
   height: 42px;
@@ -302,8 +302,8 @@ p {
   display: flex;
   align-items: center;
   border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 0 11px;
+  border-radius: 999px;
+  padding: 0 16px;
   gap: 7px;
   color: var(--muted);
   height: 42px;
@@ -724,6 +724,10 @@ footer a {
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 14px;
+}
+.detail-page > .detail-status {
+  padding: 72px 0;
+  text-align: center;
 }
 .detail-status {
   padding: 40px 0;
@@ -1185,6 +1189,10 @@ a.rank-row:hover {
     font-size: 11px;
   }
   .source-tabs {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+    justify-content: center;
     overflow-x: auto;
     gap: 2px;
     padding: 3px;

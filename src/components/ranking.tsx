@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { Poster } from "./poster";
 import { fetchJson } from "@/lib/client";
+import { byNewest } from "@/lib/sort";
 import { SiteFooter, SiteHeader } from "./site-chrome";
 import {
   sources,
@@ -27,7 +28,7 @@ export function Ranking() {
     setResult(null);
     const params = new URLSearchParams({
       source,
-      sort: "rank",
+      sort: "newest",
       page: String(page),
       locale: "zh",
     });
@@ -47,7 +48,7 @@ export function Ranking() {
     return () => controller.abort();
   }, [source, page]);
 
-  const items = result?.items || [];
+  const items = byNewest(result?.items || []);
   const offset = (page - 1) * (items.length || PAGE_SIZE);
 
   return (
@@ -57,7 +58,7 @@ export function Ranking() {
         <header className="rank-head">
           <h1>排行榜</h1>
           <p>
-            按各自站点的评分从高到低排列，不跨来源合并。评分标准不同，不建议直接横向比较。
+            按上映时间从新到旧排列，不跨来源合并。评分标准不同，不建议直接横向比较。
           </p>
         </header>
         <div className="source-bar">

@@ -96,7 +96,7 @@ export function SiteFooter() {
         <Clapperboard size={16} />
         映番 <span>记录热爱，发现故事。</span>
       </span>
-      <span>资料来自 Bangumi · AniList · TMDB · Kitsu</span>
+      <span>资料来自 Bangumi · 豆瓣 · TMDB · Kitsu</span>
       <a
         href="https://github.com/plotwist-app/plotwist"
         target="_blank"

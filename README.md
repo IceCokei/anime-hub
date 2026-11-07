@@ -4,7 +4,7 @@
 
 A small Chinese-language animation catalogue (映番) built with Next.js, React and Cloudflare Pages Functions.
 
-- Browse Bangumi, AniList, Kitsu, TMDB TV and TMDB Movies.
+- Browse Bangumi, Douban, Kitsu, TMDB TV and TMDB Movies.
 - Search, filter by country and score, and paginate through results.
 - Read title details and keep a watchlist in your browser.
 - Switch between light and dark themes.
@@ -21,7 +21,7 @@ npm run dev
 
 Open http://localhost:8788. This builds the static Next.js frontend and starts the actual Pages Functions runtime. To rebuild after editing frontend code, stop and run the command again.
 
-For optional local TMDB access, create an **untracked** `.dev.vars` file containing `TMDB_READ_TOKEN` or `TMDB_API_KEY`. Never commit credentials. No credentials are required for Bangumi, AniList or Kitsu.
+For optional local TMDB access, create an **untracked** `.dev.vars` file containing `TMDB_READ_TOKEN` or `TMDB_API_KEY`. Never commit credentials. No credentials are required for Bangumi, Douban or Kitsu.
 
 ## Deploy from GitHub to Cloudflare Pages
 
@@ -58,7 +58,7 @@ npm audit
 | Source | Search | Country filter | Notes |
 | --- | --- | --- | --- |
 | Bangumi | Keywords | Community tags | Country tags are approximate; source titles may remain Japanese/Chinese. |
-| AniList | Keywords | Country code | Native title preferred; scores converted to 10 points. |
+| Douban | Keywords (suggestions only) | Unavailable | Uses the 豆瓣 动画 tag feed; suggestions carry no rating, and the feed may block datacenter IPs. |
 | TMDB TV / Movies | Discover filters only | Country code | Requires a secret; score ordering requires at least 50 ratings. |
 | Kitsu | Keywords | Unavailable | Minimum score filters each fetched page, so an empty page may still have a next page. |
 
@@ -82,6 +82,6 @@ Cloudflare references: [Next.js static export](https://developers.cloudflare.com
 
 **Cloudflare Pages：** 关联 GitHub 仓库，选择 `main`，框架预设 `None`，构建命令 `npm run build`，输出目录 `out`，根目录留空。需要时设置构建变量 `NODE_VERSION=22`。
 
-**密钥：** 在 Pages 项目的 Variables and Secrets 中添加加密的 `TMDB_READ_TOKEN` 或 `TMDB_API_KEY`，并重新部署。密钥由 Functions 在运行时读取，编译前端无需密钥。生产与预览环境分别设置。Bangumi、AniList、Kitsu 无需密钥。本地可使用被 Git 排除的 `.dev.vars`。
+**密钥：** 在 Pages 项目的 Variables and Secrets 中添加加密的 `TMDB_READ_TOKEN` 或 `TMDB_API_KEY`，并重新部署。密钥由 Functions 在运行时读取，编译前端无需密钥。生产与预览环境分别设置。Bangumi、豆瓣、Kitsu 无需密钥。本地可使用被 Git 排除的 `.dev.vars`。
 
 **许可：** 应用代码采用 MIT。**视觉层不属于 MIT**：布局与样式适配自 Plotwist，仍受其 Source Available 许可约束（见 `PLOTWIST-LICENSE` 与 `NOTICE.md`），仅限个人、学术和内部评估用途，商业化前须另行取得许可。动画资料和海报的权利不属于本项目，仍需遵守对应来源的条款。

@@ -1,6 +1,6 @@
 export const sources = {
   bangumi: "Bangumi",
-  anilist: "AniList",
+  douban: "豆瓣",
   "tmdb-tv": "TMDB TV",
   "tmdb-movie": "TMDB Movies",
   kitsu: "Kitsu",
@@ -51,7 +51,7 @@ export type CatalogQuery = {
   search: string;
   page: number;
   country: "" | "CN" | "JP";
-  sort: "popular" | "score" | "rank";
+  sort: "popular" | "score" | "rank" | "newest";
   minScore: number;
 };
 export type CatalogResult = {

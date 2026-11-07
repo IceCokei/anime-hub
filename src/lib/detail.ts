@@ -217,144 +217,6 @@ async function tmdbDetail(
   };
 }
 
-/* ---------- AniList ---------- */
-type AniTitle = { native?: string; romaji?: string; english?: string };
-type AniMedia = {
-  id: number;
-  title: AniTitle;
-  coverImage?: { extraLarge?: string };
-  description?: string;
-  averageScore?: number;
-  startDate?: { year?: number };
-  format?: string;
-  genres?: string[];
-  type?: string;
-};
-type AniDetail = AniMedia & {
-  bannerImage?: string;
-  duration?: number;
-  startDate?: { year?: number; month?: number; day?: number };
-  trailer?: { id?: string; site?: string };
-  characters?: {
-    edges: {
-      role?: string;
-      node: { name: { full?: string }; image?: { large?: string } };
-    }[];
-  };
-  staff?: {
-    edges: {
-      role?: string;
-      node: { name: { full?: string }; image?: { large?: string } };
-    }[];
-  };
-  recommendations?: { nodes: { mediaRecommendation?: AniMedia }[] };
-  relations?: { edges: { node: AniMedia }[] };
-  externalLinks?: { site: string; url: string; type: string }[];
-  reviews?: {
-    nodes: {
-      summary?: string;
-      score?: number;
-      createdAt?: number;
-      siteUrl?: string;
-      user?: { name?: string };
-    }[];
-  };
-};
-const media = `id title { native romaji english } coverImage { extraLarge } description(asHtml: false) averageScore startDate { year } format genres type`;
-async function anilistDetail(id: string, locale: Locale): Promise<DetailResult> {
-  const response = await request<{ data?: { Media: AniDetail } }>(
-    "https://graphql.anilist.co",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...BGM_HEADERS },
-      body: JSON.stringify({
-        query: `query ($id: Int) { Media(id: $id, type: ANIME) { ${media} bannerImage duration startDate { year month day } trailer { id site } characters(sort: ROLE, perPage: 14) { edges { role node { name { full } image { large } } } } staff(perPage: 6) { edges { role node { name { full } image { large } } } } recommendations(sort: RATING_DESC, perPage: 14) { nodes { mediaRecommendation { ${media} } } } relations { edges { node { ${media} } } } externalLinks { site url type } reviews(perPage: 6, sort: RATING_DESC) { nodes { summary score createdAt siteUrl user { name } } } } }`,
-        variables: { id: Number(id) },
-      }),
-    },
-  );
-  const data = response.data?.Media;
-  if (!data) throw new CatalogError("AniList could not complete the query. Please retry.");
-  const toAnime = (item: AniMedia): Anime => ({
-    id: `anilist:${item.id}`,
-    source: "anilist",
-    title:
-      (locale === "en"
-        ? item.title.english || item.title.romaji
-        : item.title.native) ||
-      item.title.native ||
-      "Untitled",
-    originalTitle: item.title.romaji || "",
-    image: safeImage(item.coverImage?.extraLarge),
-    summary: plainText(item.description),
-    score: score(item.averageScore, 10),
-    votes: null,
-    year: String(item.startDate?.year || ""),
-    format: item.format || "Animation",
-    tags: item.genres || [],
-    url: `https://anilist.co/anime/${item.id}`,
-  });
-  const start = data.startDate;
-  const person = (
-    edge: { role?: string; node: { name: { full?: string }; image?: { large?: string } } },
-    role: string,
-  ) => ({
-    name: edge.node.name.full || "",
-    role,
-    image: safeImage(edge.node.image?.large),
-  });
-  return {
-    item: toAnime(data),
-    detail: {
-      ...empty(),
-      backdrop: safeImage(data.bannerImage),
-      date: start?.year
-        ? [start.year, start.month, start.day]
-            .filter(Boolean)
-            .map((part) => String(part).padStart(2, "0"))
-            .join("-")
-        : "",
-      runtime: data.duration ? `${data.duration} min` : "",
-      credits: [
-        ...(data.staff?.edges || []).map((edge) => person(edge, edge.role || "")),
-        ...(data.characters?.edges || []).map((edge) =>
-          person(edge, edge.role || ""),
-        ),
-      ],
-      recommendations: (data.recommendations?.nodes || [])
-        .map((node) => node.mediaRecommendation)
-        .filter((item): item is AniMedia => Boolean(item))
-        .map(toAnime),
-      similar: (data.relations?.edges || [])
-        .filter((edge) => edge.node.type === "ANIME")
-        .map((edge) => toAnime(edge.node)),
-      videos:
-        data.trailer?.site === "youtube" && data.trailer.id
-          ? [{ key: data.trailer.id, name: "Trailer", type: "Trailer" }]
-          : [],
-      providers: (data.externalLinks || [])
-        .filter(
-          (link) => link.type === "STREAMING" && link.url.startsWith("https://"),
-        )
-        .map((link) => ({
-          name: link.site,
-          logo: "",
-          kind: "flatrate",
-          url: link.url,
-        })),
-      reviews: (data.reviews?.nodes || []).map((review) => ({
-        author: review.user?.name || "AniList",
-        rating: review.score ? review.score / 10 : null,
-        content: clip(plainText(review.summary)),
-        date: review.createdAt
-          ? new Date(review.createdAt * 1000).toISOString().slice(0, 10)
-          : "",
-        url: review.siteUrl || "",
-      })),
-    },
-  };
-}
-
 /* ---------- Bangumi ---------- */
 type BgmImages = { large?: string; common?: string; medium?: string };
 async function bangumiDetail(id: string): Promise<DetailResult> {
@@ -438,6 +300,69 @@ async function bangumiDetail(id: string): Promise<DetailResult> {
   };
 }
 
+/* ---------- Douban ---------- */
+type DoubanSubject = {
+  title?: string;
+  original_title?: string;
+  year?: string;
+  intro?: string;
+  rating?: { value?: number; count?: number };
+  genres?: string[];
+  durations?: string[];
+  pic?: { large?: string; normal?: string };
+  cover_url?: string;
+  pubdate?: string[];
+  release_date?: string;
+  directors?: { name?: string }[];
+  actors?: { name?: string }[];
+};
+async function doubanDetail(id: string): Promise<DetailResult> {
+  const data = await request<DoubanSubject>(
+    `https://m.douban.com/rexxar/api/v2/movie/${id}`,
+    {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
+        Referer: "https://m.douban.com/",
+      },
+    },
+  );
+  return {
+    item: {
+      id: `douban:${id}`,
+      source: "douban",
+      title: data.title || "Untitled",
+      originalTitle: data.original_title || "",
+      image: safeImage(data.pic?.large || data.pic?.normal || data.cover_url),
+      summary: plainText(data.intro),
+      score: score(data.rating?.value),
+      votes: data.rating?.count ?? null,
+      year: data.year || "",
+      format: "Animation",
+      tags: (data.genres || []).slice(0, 5),
+      url: `https://movie.douban.com/subject/${id}/`,
+    },
+    detail: {
+      ...empty(),
+      date: data.release_date || data.pubdate?.[0] || "",
+      genres: (data.genres || []).slice(0, 6),
+      runtime: data.durations?.[0] || "",
+      credits: [
+        ...(data.directors || []).map((person) => ({
+          name: person.name || "",
+          role: "导演",
+          image: "",
+        })),
+        ...(data.actors || []).slice(0, 12).map((person) => ({
+          name: person.name || "",
+          role: "演员",
+          image: "",
+        })),
+      ],
+    },
+  };
+}
+
 /* ---------- Kitsu ---------- */
 async function kitsuDetail(id: string): Promise<DetailResult> {
   const response = await request<{
@@ -507,7 +432,7 @@ export async function getDetail(
   const { source, id } = parseDetailId(value);
   if (source === "tmdb-tv" || source === "tmdb-movie")
     return tmdbDetail(source, id, locale, env);
-  if (source === "anilist") return anilistDetail(id, locale);
   if (source === "bangumi") return bangumiDetail(id);
+  if (source === "douban") return doubanDetail(id);
   return kitsuDetail(id);
 }

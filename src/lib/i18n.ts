@@ -3,19 +3,15 @@ const apiMessages: Record<string, string> = {
   "Invalid query. Please adjust the filters.": "查询参数无效，请调整筛选条件。",
   "Kitsu does not support reliable country filtering. Choose another source.":
     "Kitsu 不支持可靠的产地筛选，请选择其他来源。",
-  "TMDB Discover does not support keyword search. Choose Bangumi, AniList or Kitsu.":
-    "TMDB 发现接口不支持关键词，请切换 Bangumi、AniList 或 Kitsu。",
+  "TMDB Discover does not support keyword search. Choose Bangumi, Douban or Kitsu.":
+    "TMDB 发现接口不支持关键词，请切换 Bangumi、豆瓣或 Kitsu。",
   "Too many requests. Please try again later.": "请求过于频繁，请稍后重试。",
   "The source could not be reached. Retry or choose another source.":
     "无法连接数据源，请重试或切换来源。",
-  "AniList could not complete the query. Please retry.":
-    "AniList 查询失败，请重试。",
   "TMDB is not configured. Add TMDB_READ_TOKEN or TMDB_API_KEY as a Cloudflare Pages secret and redeploy.":
     "TMDB 尚未配置，请在 Cloudflare Pages 中添加 TMDB_READ_TOKEN 或 TMDB_API_KEY 密钥并重新部署。",
   "Country filtering uses Bangumi community tags and may be approximate.":
     "产地使用 Bangumi 社区标签筛选，仅供参考。",
-  "AniList scores are converted to a 10-point scale. Rating counts are unavailable.":
-    "AniList 评分已换算为十分制；评分人数未提供。",
   "Score sorting includes titles with at least 50 ratings.":
     "评分排序仅包含至少 50 人评分的作品。",
   "Kitsu country is unverified. Minimum score filters the current page; empty pages may still have a next page.":
