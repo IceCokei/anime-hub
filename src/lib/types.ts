@@ -20,6 +20,30 @@ export type Anime = {
   tags: string[];
   url: string;
 };
+export type Person = { name: string; role: string; image: string };
+export type Review = {
+  author: string;
+  rating: number | null;
+  content: string;
+  date: string;
+  url: string;
+};
+export type Provider = { name: string; logo: string; kind: string; url: string };
+export type Video = { key: string; name: string; type: string };
+export type DetailData = {
+  backdrop: string;
+  tagline: string;
+  date: string;
+  genres: string[];
+  runtime: string;
+  credits: Person[];
+  recommendations: Anime[];
+  similar: Anime[];
+  images: string[];
+  videos: Video[];
+  providers: Provider[];
+  reviews: Review[];
+};
 export type CatalogQuery = {
   source: Source;
   locale: "en" | "zh";

@@ -57,7 +57,10 @@ export function parseQuery(params: URLSearchParams): CatalogQuery {
     search,
   };
 }
-async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(
+  url: string,
+  init: RequestInit = {},
+): Promise<T> {
   try {
     const response = await fetch(url, {
       ...init,
@@ -79,15 +82,15 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
     );
   }
 }
-const safeImage = (value?: string | null) =>
+export const safeImage = (value?: string | null) =>
   value?.startsWith("https://") ? value : "";
-const score = (value: unknown, divisor = 1): number | null => {
+export const score = (value: unknown, divisor = 1): number | null => {
   const number = Number(value);
   return value != null && value !== "" && Number.isFinite(number) && number > 0
     ? Math.min(10, number / divisor)
     : null;
 };
-const plainText = (value?: string | null) =>
+export const plainText = (value?: string | null) =>
   (value || "")
     .replace(/<[^>]*>/g, "")
     .replace(/&amp;/g, "&")
@@ -171,7 +174,10 @@ async function anilist(query: CatalogQuery): Promise<CatalogResult> {
     };
   }>("https://graphql.anilist.co", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "AnimeHub/1.0 (anime catalog; Next.js)",
+    },
     body: JSON.stringify({
       query: `query ($page: Int, $search: String, $country: CountryCode, $sort: [MediaSort], $min: Int) { Page(page: $page, perPage: 24) { pageInfo { hasNextPage } media(type: ANIME, isAdult: false, search: $search, countryOfOrigin: $country, sort: $sort, averageScore_greater: $min) { id title { native romaji english } coverImage { extraLarge } description(asHtml: false) averageScore startDate { year } format genres } } }`,
       variables: {
