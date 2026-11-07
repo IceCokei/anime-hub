@@ -1,8 +1,8 @@
-# Anime Hub
+# 映番 Anime Hub
 
 [English](#anime-hub) · [简体中文](#简体中文)
 
-A small, bilingual animation catalogue built with Next.js, React and Cloudflare Pages Functions. English is the default; Simplified Chinese is available from the language selector.
+A small Chinese-language animation catalogue (映番) built with Next.js, React and Cloudflare Pages Functions.
 
 - Browse Bangumi, AniList, Kitsu, TMDB TV and TMDB Movies.
 - Search, filter by country and score, and paginate through results.
@@ -58,15 +58,17 @@ npm audit
 | Source | Search | Country filter | Notes |
 | --- | --- | --- | --- |
 | Bangumi | Keywords | Community tags | Country tags are approximate; source titles may remain Japanese/Chinese. |
-| AniList | Keywords | Country code | English title preferred in English mode; scores converted to 10 points. |
+| AniList | Keywords | Country code | Native title preferred; scores converted to 10 points. |
 | TMDB TV / Movies | Discover filters only | Country code | Requires a secret; score ordering requires at least 50 ratings. |
 | Kitsu | Keywords | Unavailable | Minimum score filters each fetched page, so an empty page may still have a next page. |
 
-Each source has its own catalogue and rating system; results are not merged. The UI is translated, but provider descriptions and tags are not machine-translated. Upstream quotas and network availability apply. No video playback, account system or cross-device watchlist sync is included.
+Each source has its own catalogue and rating system; results are not merged. Provider descriptions and tags are not machine-translated. Upstream quotas and network availability apply. No video playback, account system or cross-device watchlist sync is included.
 
 ## License and credits
 
-The current implementation is licensed under [MIT](LICENSE). An earlier local prototype referenced Plotwist; its UI and stylesheet were replaced before this release. This repository contains no Plotwist source, assets, branding or licence grant. The project does not claim rights to provider data or artwork.
+The application code is licensed under [MIT](LICENSE).
+
+**The visual layer is not MIT.** The layout and stylesheet are adapted from [Plotwist](https://github.com/plotwist-app/plotwist) and remain under the Plotwist Source Available License, kept here as [PLOTWIST-LICENSE](PLOTWIST-LICENSE); see [NOTICE.md](NOTICE.md) for the adapted files. That licence allows personal, academic and internal evaluation use only and does not permit commercial services; obtain separate permission before any commercial use. The project does not claim rights to provider data or artwork and does not use Plotwist trademarks as its brand.
 
 Next.js and React are used under their respective MIT licenses; their license notices are distributed with installed packages. Metadata and artwork remain subject to each provider's terms and their rights holders' permissions. This product uses the TMDB API but is not endorsed or certified by TMDB.
 
@@ -74,7 +76,7 @@ Cloudflare references: [Next.js static export](https://developers.cloudflare.com
 
 ## 简体中文
 
-这是一个默认英文、可切换简体中文的动漫目录模板，使用 Next.js 静态导出与 Cloudflare Pages Functions。支持多个来源、搜索、产地与评分筛选、分页、详情、本地想看片单和深浅主题。
+映番是一个中文动漫目录，使用 Next.js 静态导出与 Cloudflare Pages Functions。支持多个来源、搜索、产地与评分筛选、分页、详情、本地想看片单和深浅主题。
 
 **运行：** Node.js 22+，执行 `npm ci && npm run dev`，访问 http://localhost:8788。前端修改后重新执行命令构建。
 
@@ -82,4 +84,4 @@ Cloudflare references: [Next.js static export](https://developers.cloudflare.com
 
 **密钥：** 在 Pages 项目的 Variables and Secrets 中添加加密的 `TMDB_READ_TOKEN` 或 `TMDB_API_KEY`，并重新部署。密钥由 Functions 在运行时读取，编译前端无需密钥。生产与预览环境分别设置。Bangumi、AniList、Kitsu 无需密钥。本地可使用被 Git 排除的 `.dev.vars`。
 
-**许可：** 当前独立实现采用 MIT。旧版引用 Plotwist 的 UI 和样式已替换，不包含其源码或素材。动画资料和海报的权利不属于本模板，仍需遵守对应来源的条款。语言切换翻译界面，不自动翻译所有第三方剧情简介与标签。
+**许可：** 应用代码采用 MIT。**视觉层不属于 MIT**：布局与样式适配自 Plotwist，仍受其 Source Available 许可约束（见 `PLOTWIST-LICENSE` 与 `NOTICE.md`），仅限个人、学术和内部评估用途，商业化前须另行取得许可。动画资料和海报的权利不属于本项目，仍需遵守对应来源的条款。

@@ -1,883 +1,571 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { copy, type Locale } from "@/lib/i18n";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowDownWideNarrow,
+  ArrowRight,
+  Bookmark,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clapperboard,
+  Compass,
+  ExternalLink,
+  Film,
+  Globe2,
+  Moon,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Star,
+  Sun,
+  X,
+} from "lucide-react";
 import {
   sources,
   type Anime,
   type CatalogResult,
-  type DetailData,
   type Source,
 } from "@/lib/types";
 
-const SAVED_KEY = "anime-hub:watchlist:v1";
-function readList(value: unknown): Anime[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (item): item is Anime =>
-      item &&
-      typeof item.id === "string" &&
-      typeof item.title === "string" &&
-      typeof item.originalTitle === "string" &&
-      typeof item.summary === "string" &&
-      typeof item.image === "string" &&
-      typeof item.format === "string" &&
-      typeof item.year === "string" &&
-      (item.score === null || typeof item.score === "number") &&
-      (item.votes === null || typeof item.votes === "number") &&
-      Array.isArray(item.tags) &&
-      item.tags.every((tag: unknown) => typeof tag === "string") &&
-      Object.hasOwn(sources, item.source) &&
-      typeof item.url === "string" &&
-      /^https:\/\/(bgm.tv|anilist.co|kitsu.io|www.themoviedb.org)\//.test(
-        item.url,
-      ),
-  );
-}
-
-const ICONS: Record<string, ReactNode> = {
-  film: (
-    <>
-      <path d="M4 8h16v11H4z" />
-      <path d="m4 8 2-4 4 1-2 3M10 5l4 1-2 2M14 6l4 1-2 1" />
-    </>
-  ),
-  compass: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="m15.5 8.5-2 5-5 2 2-5z" />
-    </>
-  ),
-  bookmark: <path d="M7 4h10v16l-5-4-5 4z" />,
-  sun: (
-    <>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-    </>
-  ),
-  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" />,
-  search: (
-    <>
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" />
-    </>
-  ),
-  arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
-  back: <path d="M19 12H5M11 6l-6 6 6 6" />,
-  globe: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
-    </>
-  ),
-  star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />,
-  sort: <path d="M4 6h10M4 12h7M4 18h4M17 5v14M14 16l3 3 3-3" />,
-  chevron: <path d="m6 9 6 6 6-6" />,
-  spark: (
-    <path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7zM19 16c.2 1.6 1 2.4 2.5 2.5-1.5.2-2.3 1-2.5 2.5-.2-1.5-1-2.3-2.5-2.5 1.5-.1 2.3-.9 2.5-2.5z" />
-  ),
-  plus: <path d="M12 5v14M5 12h14" />,
-  check: <path d="m5 12.5 4.5 4.5L19 7" />,
-  filter: <path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6" />,
-  link: <path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" />,
-  play: <path d="M8 5v14l11-7z" />,
-};
-function Icon({ name, size = 18 }: { name: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {ICONS[name]}
-    </svg>
-  );
-}
-
-function Artwork({ item, fit = "cover" }: { item: Anime; fit?: string }) {
+const STORAGE_KEY = "anime-hub:watchlist:v1";
+function Poster({ anime }: { anime: Anime }) {
   const [failed, setFailed] = useState(false);
-  return item.image.startsWith("https://") && !failed ? (
+  return anime.image && !failed ? (
     <img
-      src={item.image}
-      alt={item.title}
+      src={anime.image}
+      alt={anime.title}
       loading="lazy"
       referrerPolicy="no-referrer"
-      style={{ objectFit: fit as "cover" }}
       onError={() => setFailed(true)}
     />
   ) : (
-    <div className="artwork-placeholder" aria-hidden="true">
-      <Icon name="film" size={34} />
+    <div className="poster-fallback">
+      <Film size={30} />
+      <span>{anime.title}</span>
     </div>
   );
 }
-
-type Text = (typeof copy)["en"];
-const TAB_ORDER = [
-  "reviews",
-  "watch",
-  "credits",
-  "recommendations",
-  "similar",
-  "images",
-  "videos",
-] as const;
-type TabKey = (typeof TAB_ORDER)[number];
-
-function Poster({
-  item,
-  text,
-  locale,
+function Detail({
+  anime,
   saved,
-  onOpen,
-  onToggle,
-}: {
-  item: Anime;
-  text: Text;
-  locale: Locale;
-  saved: boolean;
-  onOpen: () => void;
-  onToggle: () => void;
-}) {
-  return (
-    <article className="card">
-      <div className="poster">
-        <button
-          className="poster-open"
-          aria-label={`${text.details}: ${item.title}`}
-          onClick={onOpen}
-        >
-          <Artwork item={item} />
-        </button>
-        <span className="badge">
-          {item.format === "Animation" ? text.animation : item.format}
-        </span>
-        <button
-          className="bookmark"
-          aria-pressed={saved}
-          aria-label={saved ? text.remove : text.save}
-          onClick={onToggle}
-        >
-          <Icon name={saved ? "check" : "bookmark"} size={16} />
-        </button>
-      </div>
-      <div className="card-line">
-        <button className="card-title" onClick={onOpen}>
-          {item.title}
-        </button>
-        <span className="card-score">
-          {item.score ? (
-            <>
-              <Icon name="star" size={13} />
-              {item.score.toFixed(1)}
-            </>
-          ) : (
-            "—"
-          )}
-        </span>
-      </div>
-      <div className="card-meta">
-        <span>
-          {item.year || "—"} · {item.format === "Animation" ? text.animation : item.format}
-        </span>
-        <span>
-          {item.votes != null
-            ? `${item.votes >= 10000 ? `${(item.votes / 10000).toFixed(1)}万` : item.votes.toLocaleString(locale)} ${text.votes}`
-            : ""}
-        </span>
-      </div>
-    </article>
-  );
-}
-
-function DetailView({
-  item,
-  locale,
-  saved,
-  isSaved,
   toggle,
-  open,
-  back,
+  close,
 }: {
-  item: Anime;
-  locale: Locale;
-  saved: Anime[];
-  isSaved: boolean;
-  toggle: (item: Anime) => void;
-  open: (item: Anime) => void;
-  back: () => void;
+  anime: Anime;
+  saved: boolean;
+  toggle: () => void;
+  close: () => void;
 }) {
-  const text = copy[locale];
-  const [data, setData] = useState<DetailData | null>(null);
-  const [error, setError] = useState("");
-  const [tab, setTab] = useState<TabKey>("recommendations");
+  const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    const controller = new AbortController();
-    setData(null);
-    setError("");
-    window.scrollTo(0, 0);
-    fetch(`/api/detail?${new URLSearchParams({ id: item.id, locale })}`, {
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error || text.network);
-        if (controller.signal.aborted) return;
-        const next = body as DetailData;
-        setData(next);
-        const filled: Record<TabKey, number> = {
-          reviews: next.reviews.length,
-          watch: next.providers.length,
-          credits: next.credits.length,
-          recommendations: next.recommendations.length,
-          similar: next.similar.length,
-          images: next.images.length,
-          videos: next.videos.length,
-        };
-        setTab(
-          filled.recommendations
-            ? "recommendations"
-            : TAB_ORDER.find((key) => filled[key]) || "recommendations",
-        );
-      })
-      .catch((cause) => {
-        if (!controller.signal.aborted)
-          setError(cause instanceof Error ? cause.message : text.network);
-      });
-    return () => controller.abort();
-  }, [item.id, locale, text.network]);
-
-  const empty = <p className="tab-empty">{text.notFound}</p>;
-  const grid = (list: Anime[]) =>
-    list.length ? (
-      <div className="grid compact">
-        {list.map((entry) => (
-          <Poster
-            key={entry.id}
-            item={entry}
-            text={text}
-            locale={locale}
-            saved={saved.some((value) => value.id === entry.id)}
-            onOpen={() => open(entry)}
-            onToggle={() => toggle(entry)}
-          />
-        ))}
-      </div>
-    ) : (
-      empty
-    );
-  function panel(current: DetailData) {
-    if (tab === "reviews")
-      return current.reviews.length ? (
-        <div className="reviews">
-          {current.reviews.map((review, index) => (
-            <article key={`${review.author}-${index}`}>
-              <header>
-                <strong>{review.author}</strong>
-                {review.rating != null && (
-                  <span className="card-score">
-                    <Icon name="star" size={13} />
-                    {review.rating.toFixed(1)}
-                  </span>
-                )}
-                <small>{review.date}</small>
-              </header>
-              <p>{review.content}</p>
-              {review.url.startsWith("https://") && (
-                <a href={review.url} target="_blank" rel="noopener noreferrer">
-                  {text.viewOnSource} <Icon name="link" size={12} />
-                </a>
-              )}
-            </article>
-          ))}
-        </div>
-      ) : (
-        empty
-      );
-    if (tab === "watch")
-      return current.providers.length ? (
-        <div className="providers">
-          {current.providers.map((provider, index) => {
-            const content = (
-              <>
-                {provider.logo ? (
-                  <img src={provider.logo} alt="" referrerPolicy="no-referrer" />
-                ) : (
-                  <Icon name="play" size={16} />
-                )}
-                <span>{provider.name}</span>
-                <small>
-                  {text.kinds[provider.kind as keyof typeof text.kinds] ||
-                    provider.kind}
-                </small>
-              </>
-            );
-            return provider.url.startsWith("https://") ? (
-              <a
-                key={`${provider.name}-${index}`}
-                href={provider.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {content}
-              </a>
-            ) : (
-              <div key={`${provider.name}-${index}`}>{content}</div>
-            );
-          })}
-        </div>
-      ) : (
-        empty
-      );
-    if (tab === "credits")
-      return current.credits.length ? (
-        <div className="people">
-          {current.credits.map((person, index) => (
-            <div key={`${person.name}-${index}`}>
-              <span className="avatar">
-                {person.image ? (
-                  <img src={person.image} alt="" referrerPolicy="no-referrer" />
-                ) : (
-                  person.name.slice(0, 1)
-                )}
-              </span>
-              <strong>{person.name}</strong>
-              <small>{person.role}</small>
-            </div>
-          ))}
-        </div>
-      ) : (
-        empty
-      );
-    if (tab === "recommendations") return grid(current.recommendations);
-    if (tab === "similar") return grid(current.similar);
-    if (tab === "images")
-      return current.images.length ? (
-        <div className="gallery">
-          {current.images.map((src) => (
-            <a key={src} href={src} target="_blank" rel="noopener noreferrer">
-              <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" />
-            </a>
-          ))}
-        </div>
-      ) : (
-        empty
-      );
-    return current.videos.length ? (
-      <div className="gallery videos">
-        {current.videos.map((video) => (
-          <a
-            key={video.key}
-            href={`https://www.youtube.com/watch?v=${encodeURIComponent(video.key)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              src={`https://img.youtube.com/vi/${encodeURIComponent(video.key)}/hqdefault.jpg`}
-              alt=""
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
-            <span className="play">
-              <Icon name="play" size={20} />
-            </span>
-            <small>{video.name}</small>
-          </a>
-        ))}
-      </div>
-    ) : (
-      empty
-    );
-  }
-  const backdrop = data?.backdrop || item.image;
-  const genres = data?.genres.length ? data.genres : item.tags;
+    dialog.current?.showModal();
+  }, []);
   return (
-    <div className="detail">
-      <button className="ghost back" onClick={back}>
-        <Icon name="back" size={16} /> {text.back}
+    <dialog
+      ref={dialog}
+      onCancel={close}
+      onClick={(event) => {
+        if (event.target === dialog.current) close();
+      }}
+      aria-labelledby="detail-title"
+    >
+      <button
+        className="icon-button close"
+        aria-label="关闭详情"
+        onClick={close}
+      >
+        <X size={20} />
       </button>
-      <div className="banner">
-        {backdrop.startsWith("https://") && (
-          <img
-            src={backdrop}
-            alt=""
-            referrerPolicy="no-referrer"
-            className={data?.backdrop ? "" : "blur"}
-          />
-        )}
-      </div>
-      <div className="hero-row">
+      <div className="detail-layout">
         <div className="detail-poster">
-          <Artwork item={item} />
+          <Poster anime={anime} />
         </div>
-        <div className="detail-info">
-          <p className="date">
-            {[data?.date || item.year, data?.runtime].filter(Boolean).join(" · ") ||
-              text.unknownYear}
-          </p>
-          <h1>{item.title}</h1>
-          {item.originalTitle && item.originalTitle !== item.title && (
-            <p className="original">{item.originalTitle}</p>
-          )}
-          <div className="chips">
-            {genres.slice(0, 6).map((genre, index) => (
-              <span key={`${genre}-${index}`}>{genre}</span>
-            ))}
-            <span className="rating-chip">
-              {sources[item.source].split(" ")[0]}
-              <i />
-              {item.score ? item.score.toFixed(1) : "—"}
+        <div>
+          <span className="eyebrow">
+            {sources[anime.source]} · {anime.format}
+          </span>
+          <h2 id="detail-title">{anime.title}</h2>
+          <p className="muted">{anime.originalTitle}</p>
+          <div className="detail-meta">
+            <Star size={18} fill="currentColor" />
+            <strong>{anime.score?.toFixed(1) || "暂无评分"}</strong>
+            <span>
+              {anime.votes == null
+                ? "评分人数未提供"
+                : `${anime.votes.toLocaleString()} 人评分`}{" "}
+              · {anime.year || "年份未知"}
             </span>
           </div>
-          {data?.tagline && <p className="tagline">“{data.tagline}”</p>}
-          <p className="summary">{item.summary || text.noSummary}</p>
-          <div className="actions">
-            <button
-              className={isSaved ? "solid done" : "solid"}
-              onClick={() => toggle(item)}
-            >
-              <Icon name={isSaved ? "check" : "plus"} size={16} />
-              {isSaved ? text.inList : text.addToList}
+          <div className="tags">
+            {anime.tags.map((tag) => (
+              <span key={tag}>{tag}</span>
+            ))}
+          </div>
+          <p className="synopsis">{anime.summary || "数据源暂未提供简介。"}</p>
+          <div className="detail-actions">
+            <button className="primary" onClick={toggle}>
+              {saved ? <Check size={16} /> : <Bookmark size={16} />}
+              {saved ? "已加入片单" : "加入想看"}
             </button>
             <a
-              className="ghost"
-              href={item.url}
+              className="button"
+              href={anime.url}
               target="_blank"
               rel="noopener noreferrer"
             >
-              {text.visit} <Icon name="link" size={14} />
+              来源条目 <ExternalLink size={15} />
             </a>
           </div>
         </div>
       </div>
-      <div className="tabs" role="tablist">
-        {TAB_ORDER.map((key) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-          >
-            {text.tabs[key]}
-          </button>
-        ))}
-      </div>
-      <div className="tab-panel" role="tabpanel">
-        {error ? (
-          <p className="tab-empty" role="alert">
-            {error}
-          </p>
-        ) : data ? (
-          panel(data)
-        ) : (
-          <p className="tab-empty" role="status">
-            {text.detailLoading}
-          </p>
-        )}
-      </div>
-    </div>
+    </dialog>
   );
 }
-
 export function Catalog() {
-  const [locale, setLocale] = useState<Locale>("zh");
-  const [dark, setDark] = useState(true);
-  const [tab, setTab] = useState<"explore" | "saved">("explore");
   const [source, setSource] = useState<Source>("bangumi");
-  const [draft, setDraft] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [country, setCountry] = useState("");
-  const [minScore, setMinScore] = useState("0");
   const [sort, setSort] = useState("popular");
+  const [minScore, setMinScore] = useState("0");
   const [page, setPage] = useState(1);
-  const [attempt, setAttempt] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<CatalogResult | null>(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
+  const [selected, setSelected] = useState<Anime | null>(null);
   const [saved, setSaved] = useState<Anime[]>([]);
-  const [storageError, setStorageError] = useState(false);
-  const [detail, setDetail] = useState<Anime | null>(null);
-  const text = copy[locale];
-  const tmdb = source.startsWith("tmdb");
+  const [showSaved, setShowSaved] = useState(false);
+  const [dark, setDark] = useState(true);
+  const [storageMessage, setStorageMessage] = useState("");
   useEffect(() => {
     try {
-      setSaved(readList(JSON.parse(localStorage.getItem(SAVED_KEY) || "[]")));
-      if (localStorage.getItem("anime-hub:locale") === "en") setLocale("en");
-      setDark(localStorage.getItem("anime-hub:theme") !== "light");
+      const list: unknown = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || "[]",
+      );
+      if (Array.isArray(list))
+        setSaved(
+          list.filter(
+            (item): item is Anime =>
+              item &&
+              typeof item.id === "string" &&
+              typeof item.title === "string" &&
+              Object.hasOwn(sources, item.source) &&
+              Array.isArray(item.tags) &&
+              typeof item.url === "string" &&
+              item.url.startsWith("https://"),
+          ),
+        );
+      const theme = localStorage.getItem("anime-hub:theme");
+      if (theme === "light") setDark(false);
     } catch {
-      setStorageError(true);
+      setStorageMessage("浏览器存储不可用，片单仅在本次访问中保留。");
     }
   }, []);
-  useEffect(() => {
-    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-    document.title = `${text.brand} · ${text.explore}`;
-  }, [locale, text]);
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
   }, [dark]);
   useEffect(() => {
-    const onPop = () => setDetail(null);
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-  useEffect(() => {
-    if (tab === "saved") return;
+    if (showSaved) return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
     setResult(null);
-    fetch(
-      `/api/anime?${new URLSearchParams({ source, locale, search, country, minScore, sort, page: String(page) })}`,
-      { signal: controller.signal },
-    )
+    const params = new URLSearchParams({
+      source,
+      search,
+      country,
+      sort,
+      minScore,
+      page: String(page),
+      locale: "zh",
+    });
+    fetch(`/api/anime?${params}`, { signal: controller.signal })
       .then(async (response) => {
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || text.network);
+        if (!response.ok) throw new Error(data.error || "加载失败");
         if (!controller.signal.aborted) setResult(data);
       })
       .catch((cause) => {
         if (!controller.signal.aborted)
-          setError(cause instanceof Error ? cause.message : text.network);
+          setError(cause.message || "网络连接失败");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [
-    source,
-    locale,
-    search,
-    country,
-    minScore,
-    sort,
-    page,
-    tab,
-    attempt,
-    text.network,
-  ]);
-  function persist(key: string, value: string) {
+  }, [source, search, country, sort, minScore, page, retry, showSaved]);
+  function toggleSaved(anime: Anime) {
+    const next = saved.some((item) => item.id === anime.id)
+      ? saved.filter((item) => item.id !== anime.id)
+      : [...saved, anime];
+    setSaved(next);
     try {
-      localStorage.setItem(key, value);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
-      setStorageError(true);
+      setStorageMessage("无法保存到浏览器，片单仅在本次访问中保留。");
     }
   }
-  function toggle(item: Anime) {
-    const next = saved.some((entry) => entry.id === item.id)
-      ? saved.filter((entry) => entry.id !== item.id)
-      : [...saved, item];
-    setSaved(next);
-    persist(SAVED_KEY, JSON.stringify(next));
-  }
-  function openDetail(item: Anime) {
-    if (!detail) history.pushState({ detail: true }, "");
-    setDetail(item);
-  }
-  function closeDetail() {
-    if (history.state?.detail) history.back();
-    else setDetail(null);
-  }
-  function selectSource(value: Source) {
+  function changeSource(value: Source) {
     setSource(value);
     setPage(1);
+    setShowSaved(false);
     if (value === "kitsu") setCountry("");
     if (value.startsWith("tmdb")) {
       setSearch("");
-      setDraft("");
+      setSearchInput("");
     }
   }
-  const sourceLabel = (value: string, label: string) =>
-    locale === "zh" && value === "tmdb-tv"
-      ? "TMDB 剧集"
-      : locale === "zh" && value === "tmdb-movie"
-        ? "TMDB 电影"
-        : label;
-  const items = tab === "saved" ? saved : result?.items || [];
+  const items = showSaved ? saved : result?.items || [];
+  const busy = !showSaved && loading;
   return (
-    <div className="shell">
-      <header className="topbar">
-        <a className="brand" href="/">
-          <span className="logo">
-            <Icon name="film" size={22} />
+    <div className="site-shell">
+      <header className="header">
+        <a href="/" className="brand" aria-label="映番首页">
+          <span className="brand-mark">
+            <Clapperboard size={23} />
           </span>
-          <strong>{text.brand}</strong>
+          映番
+          <span className="brand-divider" />
           <span className="brand-sub">ANIME JOURNAL</span>
         </a>
-        <nav aria-label={locale === "zh" ? "主导航" : "Main navigation"}>
+        <nav aria-label="主导航">
           <button
-            aria-current={tab === "explore"}
-            onClick={() => {
-              setTab("explore");
-              setDetail(null);
-            }}
+            className={!showSaved ? "nav-active" : ""}
+            onClick={() => setShowSaved(false)}
           >
-            <Icon name="compass" size={17} />
-            {text.explore}
+            <Compass size={16} />
+            发现
           </button>
           <button
-            aria-current={tab === "saved"}
-            onClick={() => {
-              setTab("saved");
-              setDetail(null);
-            }}
+            className={showSaved ? "nav-active" : ""}
+            onClick={() => setShowSaved(true)}
           >
-            <Icon name="bookmark" size={17} />
-            {text.saved}
-            <b>{saved.length}</b>
+            <Bookmark size={16} />
+            我的片单<span className="count">{saved.length}</span>
           </button>
         </nav>
-        <div className="tools">
-          <label className="lang">
-            <Icon name="globe" size={16} />
-            <select
-              aria-label="Language / 语言"
-              value={locale}
-              onChange={(event) => {
-                const next = event.target.value as Locale;
-                setLocale(next);
-                persist("anime-hub:locale", next);
-              }}
-            >
-              <option value="zh">简体中文</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-          <button
-            className="icon-button"
-            aria-label={text.theme}
-            onClick={() => {
-              setDark(!dark);
-              persist("anime-hub:theme", dark ? "light" : "dark");
-            }}
-          >
-            <Icon name={dark ? "sun" : "moon"} size={18} />
-          </button>
-        </div>
+        <button
+          className="icon-button theme-button"
+          aria-label={dark ? "切换浅色主题" : "切换深色主题"}
+          onClick={() => {
+            setDark(!dark);
+            try {
+              localStorage.setItem("anime-hub:theme", dark ? "light" : "dark");
+            } catch {}
+          }}
+        >
+          {dark ? <Sun size={19} /> : <Moon size={19} />}
+        </button>
       </header>
       <main>
-        {detail ? (
-          <DetailView
-            item={detail}
-            locale={locale}
-            saved={saved}
-            isSaved={saved.some((entry) => entry.id === detail.id)}
-            toggle={toggle}
-            open={openDetail}
-            back={closeDetail}
-          />
-        ) : (
+        <section className="intro">
+          <div>
+            <div className="eyebrow">
+              <span className="status-dot" /> YOUR NEXT GREAT STORY
+            </div>
+            <h1>{showSaved ? "留给下一次，心动。" : "好故事，值得被发现。"}</h1>
+            <p>
+              {showSaved
+                ? "把想看的世界收进片单，随时回来继续探索。"
+                : "从经典神作到新鲜国漫，找到属于你的下一部动画。"}
+            </p>
+          </div>
+          <div className="intro-note">
+            <Sparkles size={19} />
+            <span>
+              每一帧热爱
+              <br />
+              <strong>都有下一集</strong>
+            </span>
+          </div>
+        </section>
+        {!showSaved && (
           <>
-            <section className="hero">
-              <div>
-                <p className="eyebrow">
-                  <i />
-                  {tab === "saved" ? text.local : text.eyebrow}
-                </p>
-                <h1>{tab === "saved" ? text.savedHeading : text.heading}</h1>
-                <p className="hero-sub">{text.heroSub}</p>
+            <div className="source-bar">
+              <div className="source-label">
+                <Globe2 size={15} />
+                探索来源
               </div>
-              <aside className="hero-side">
-                <Icon name="spark" size={30} />
-                <p>
-                  <small>{text.heroSide1}</small>
-                  {text.heroSide2}
-                </p>
-              </aside>
-            </section>
-            {tab === "explore" && (
-              <>
-                <section className="sources" aria-label={text.source}>
-                  <span className="sources-label">
-                    <Icon name="globe" size={18} />
-                    {text.sources}
-                  </span>
-                  <div role="group" aria-label={text.source}>
-                    {Object.entries(sources).map(([value, label]) => (
-                      <button
-                        key={value}
-                        aria-pressed={source === value}
-                        onClick={() => selectSource(value as Source)}
-                      >
-                        {source === value && <i />}
-                        {sourceLabel(value, label)}
-                      </button>
-                    ))}
-                  </div>
-                  <span className="sources-hint">{text.sourceHint}</span>
-                </section>
-                <section className="filters" aria-label={text.search}>
-                  <form
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      setSearch(draft.trim());
+              <div className="source-tabs" role="group" aria-label="数据来源">
+                {Object.entries(sources).map(([key, name]) => (
+                  <button
+                    className={source === key ? "active" : ""}
+                    key={key}
+                    onClick={() => changeSource(key as Source)}
+                  >
+                    {source === key && <span className="source-dot" />}
+                    {name}
+                  </button>
+                ))}
+              </div>
+              <span className="source-hint">独立评分 · 自由探索</span>
+            </div>
+            <section className="toolbar" aria-label="搜索和筛选">
+              <form
+                className="search"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setSearch(searchInput.trim());
+                  setPage(1);
+                }}
+              >
+                <Search size={18} />
+                <input
+                  aria-label="搜索动画"
+                  placeholder={
+                    source.startsWith("tmdb")
+                      ? "TMDB 发现模式 · 使用右侧筛选"
+                      : "搜索动画名称，开启一个新世界…"
+                  }
+                  value={searchInput}
+                  disabled={source.startsWith("tmdb")}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                />
+                <button
+                  aria-label="提交搜索"
+                  disabled={source.startsWith("tmdb")}
+                >
+                  <ArrowRight size={18} />
+                </button>
+              </form>
+              <div className="filters">
+                <label>
+                  <Globe2 size={15} />
+                  <select
+                    aria-label="产地"
+                    value={country}
+                    disabled={source === "kitsu"}
+                    onChange={(event) => {
+                      setCountry(event.target.value);
                       setPage(1);
                     }}
                   >
-                    <Icon name="search" size={19} />
-                    <input
-                      aria-label={text.search}
-                      value={draft}
-                      maxLength={100}
-                      disabled={tmdb}
-                      placeholder={
-                        tmdb ? text.discoverOnly : text.searchPlaceholder
-                      }
-                      onChange={(event) => setDraft(event.target.value)}
-                    />
-                    <button aria-label={text.searchButton} disabled={tmdb}>
-                      <Icon name="arrow" size={18} />
-                    </button>
-                  </form>
-                  <label className="select">
-                    <Icon name="globe" size={17} />
-                    <select
-                      aria-label={text.country}
-                      value={country}
-                      disabled={source === "kitsu"}
-                      onChange={(event) => {
-                        setCountry(event.target.value);
-                        setPage(1);
-                      }}
-                    >
-                      <option value="">{text.allCountries}</option>
-                      <option value="CN">{text.china}</option>
-                      <option value="JP">{text.japan}</option>
-                    </select>
-                    <Icon name="chevron" size={15} />
-                  </label>
-                  <label className="select">
-                    <Icon name="star" size={17} />
-                    <select
-                      aria-label={text.score}
-                      value={minScore}
-                      onChange={(event) => {
-                        setMinScore(event.target.value);
-                        setPage(1);
-                      }}
-                    >
-                      <option value="0">{text.allScores}</option>
-                      {[7, 8, 9].map((score) => (
-                        <option key={score} value={score}>
-                          {score}+
-                        </option>
-                      ))}
-                    </select>
-                    <Icon name="chevron" size={15} />
-                  </label>
-                  <label className="select">
-                    <Icon name="sort" size={17} />
-                    <select
-                      aria-label={text.sort}
-                      value={sort}
-                      onChange={(event) => {
-                        setSort(event.target.value);
-                        setPage(1);
-                      }}
-                    >
-                      <option value="popular">{text.popular}</option>
-                      <option value="score">{text.highest}</option>
-                    </select>
-                    <Icon name="chevron" size={15} />
-                  </label>
-                </section>
-              </>
-            )}
-            <div className="result-heading">
-              <h2>{tab === "saved" ? text.saved : search || text.popular}</h2>
-              <span>
-                {tab === "saved"
-                  ? `${saved.length} ${text.titles}`
-                  : `${sourceLabel(source, sources[source])}${result?.total != null ? ` · ${result.total.toLocaleString(locale)} ${text.titles}` : ""}`}
-              </span>
-              <em>
-                <Icon name="filter" size={16} />
-                {text.featured}
-              </em>
-            </div>
-            {storageError && (
-              <p role="status" className="notice">
-                {text.storage}
-              </p>
-            )}
-            {tab === "explore" && loading ? (
-              <div className="loading" role="status">
-                {text.loading}
-                <div className="loading-line" />
+                    <option value="">全部产地</option>
+                    <option value="CN">中国 · 国漫</option>
+                    <option value="JP">日本动画</option>
+                  </select>
+                </label>
+                <label>
+                  <Star size={15} />
+                  <select
+                    aria-label="最低评分"
+                    value={minScore}
+                    onChange={(event) => {
+                      setMinScore(event.target.value);
+                      setPage(1);
+                    }}
+                  >
+                    <option value="0">全部评分</option>
+                    <option value="7">7 分以上</option>
+                    <option value="8">8 分以上</option>
+                    <option value="9">9 分以上</option>
+                  </select>
+                </label>
+                <label>
+                  <ArrowDownWideNarrow size={15} />
+                  <select
+                    aria-label="排序"
+                    value={sort}
+                    onChange={(event) => {
+                      setSort(event.target.value);
+                      setPage(1);
+                    }}
+                  >
+                    <option value="popular">最多人关注</option>
+                    <option value="score">评分最高</option>
+                  </select>
+                </label>
               </div>
-            ) : tab === "explore" && error ? (
-              <section className="message" role="alert">
-                <h3>{text.error}</h3>
-                <p>{error}</p>
-                <button
-                  className="solid"
-                  onClick={() => setAttempt((value) => value + 1)}
-                >
-                  {text.retry}
-                </button>
-              </section>
+            </section>
+          </>
+        )}
+        <div className="section-heading">
+          <div>
+            <h2>
+              {showSaved
+                ? "我的想看清单"
+                : search
+                  ? `“${search}” 的搜索结果`
+                  : country === "CN"
+                    ? "国漫，正在发光"
+                    : sort === "score"
+                      ? "经得起时间的好作品"
+                      : "大家都在看"}
+            </h2>
+            <span>
+              {showSaved
+                ? `${items.length} 部已收藏`
+                : `${sources[source]}${result?.total != null ? ` · ${result.total.toLocaleString()} 部作品` : " · 动画发现"}`}
+            </span>
+          </div>
+          <span className="view-label">
+            <SlidersHorizontal size={14} />
+            {showSaved ? "保存在本机" : "精选动画目录"}
+          </span>
+        </div>
+        {storageMessage && (
+          <p role="status" className="notice">
+            {storageMessage}
+          </p>
+        )}
+        {busy ? (
+          <div
+            className="poster-grid"
+            aria-label="正在加载动画"
+            aria-busy="true"
+          >
+            {Array.from({ length: 24 }, (_, index) => (
+              <div className="skeleton-card" key={index}>
+                <div />
+                <span />
+                <small />
+              </div>
+            ))}
+          </div>
+        ) : error && !showSaved ? (
+          <div className="empty" role="alert">
+            <Globe2 size={32} />
+            <h3>暂时没能抵达这个世界</h3>
+            <p>{error}</p>
+            <button
+              className="primary"
+              onClick={() => setRetry((value) => value + 1)}
+            >
+              重新加载
+            </button>
+          </div>
+        ) : (
+          <>
+            {items.length === 0 ? (
+              <div className="empty">
+                <Bookmark size={32} />
+                <h3>
+                  {showSaved
+                    ? "你的下一部好故事，还在路上"
+                    : "没有找到匹配的动画"}
+                </h3>
+                <p>
+                  {showSaved
+                    ? "点击海报上的收藏按钮，把喜欢的动画加入想看。"
+                    : "试试其他关键词、放宽筛选，或继续翻页。"}
+                </p>
+                {showSaved && (
+                  <button
+                    className="primary"
+                    onClick={() => setShowSaved(false)}
+                  >
+                    去发现动画 <ArrowRight size={16} />
+                  </button>
+                )}
+              </div>
             ) : (
-              <>
-                {!items.length ? (
-                  <section className="message">
-                    <h3>{text.empty}</h3>
-                    <p>{text.emptyHint}</p>
-                  </section>
-                ) : (
-                  <div className="grid">
-                    {items.map((item) => (
-                      <Poster
-                        key={item.id}
-                        item={item}
-                        text={text}
-                        locale={locale}
-                        saved={saved.some((entry) => entry.id === item.id)}
-                        onOpen={() => openDetail(item)}
-                        onToggle={() => toggle(item)}
-                      />
-                    ))}
-                  </div>
-                )}
-                {tab === "explore" && (
-                  <div className="pager">
-                    <button
-                      className="ghost"
-                      disabled={page === 1}
-                      onClick={() => setPage((value) => value - 1)}
-                    >
-                      ← {text.previous}
-                    </button>
-                    <span>
-                      {text.page} {page}
-                    </span>
-                    <button
-                      className="ghost"
-                      disabled={!result?.hasNext}
-                      onClick={() => setPage((value) => value + 1)}
-                    >
-                      {text.next} →
-                    </button>
-                  </div>
-                )}
-              </>
+              <div className="poster-grid">
+                {items.map((anime, index) => (
+                  <article
+                    className="anime-card"
+                    key={anime.id}
+                    style={{ animationDelay: `${Math.min(index, 11) * 25}ms` }}
+                  >
+                    <div className="poster-wrap">
+                      <button
+                        className="poster-open"
+                        onClick={() => setSelected(anime)}
+                        aria-label={`查看 ${anime.title}`}
+                      >
+                        <Poster anime={anime} />
+                        <span className="poster-shade" />
+                        <span className="poster-format">{anime.format}</span>
+                        <span className="poster-detail">
+                          查看详情 <ArrowRight size={15} />
+                        </span>
+                      </button>
+                      <button
+                        className={`save-button ${saved.some((item) => item.id === anime.id) ? "is-saved" : ""}`}
+                        aria-label={`${saved.some((item) => item.id === anime.id) ? "取消收藏" : "收藏"} ${anime.title}`}
+                        onClick={() => toggleSaved(anime)}
+                      >
+                        {saved.some((item) => item.id === anime.id) ? (
+                          <Check size={17} />
+                        ) : (
+                          <Bookmark size={17} />
+                        )}
+                      </button>
+                    </div>
+                    <div className="card-title">
+                      <button onClick={() => setSelected(anime)}>
+                        {anime.title}
+                      </button>
+                      <span className="rating">
+                        <Star size={11} fill="currentColor" />
+                        {anime.score?.toFixed(1) || "—"}
+                      </span>
+                    </div>
+                    <div className="card-meta">
+                      <span>
+                        {anime.year || "年份待定"} · {anime.format}
+                      </span>
+                      <span>
+                        {anime.votes == null
+                          ? sources[anime.source]
+                          : `${anime.votes >= 10000 ? `${(anime.votes / 10000).toFixed(1)}万` : anime.votes} 人评分`}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+            {!showSaved && (
+              <div className="pagination">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage((value) => value - 1)}
+                >
+                  <ChevronLeft size={16} />
+                  上一页
+                </button>
+                <span>第 {page} 页</span>
+                <button
+                  disabled={!result?.hasNext}
+                  onClick={() => setPage((value) => value + 1)}
+                >
+                  下一页
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             )}
           </>
         )}
+        {!showSaved && (
+          <p className="data-note">
+            {result?.note ||
+              "评分来自当前数据源，统一显示为十分制；不同站点评分不直接比较。"}
+          </p>
+        )}
       </main>
       <footer>
-        <p>{tab === "explore" && !detail ? result?.note || text.note : text.local}</p>
-        <p>{text.attribution}</p>
-        <span>Bangumi / AniList / TMDB / Kitsu</span>
-        <p className="tmdb-credit">
-          This product uses the TMDB API but is not endorsed or certified by
-          TMDB.
-        </p>
+        <span className="footer-brand">
+          <Clapperboard size={16} />
+          映番 <span>记录热爱，发现故事。</span>
+        </span>
+        <span>资料来自 Bangumi · AniList · TMDB · Kitsu</span>
+        <a
+          href="https://github.com/plotwist-app/plotwist"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          UI adapted from Plotwist <ExternalLink size={12} />
+        </a>
       </footer>
+      {selected && (
+        <Detail
+          anime={selected}
+          saved={saved.some((item) => item.id === selected.id)}
+          toggle={() => toggleSaved(selected)}
+          close={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }
