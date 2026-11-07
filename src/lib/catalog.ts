@@ -33,7 +33,7 @@ export function parseQuery(params: URLSearchParams): CatalogQuery {
     minScore < 0 ||
     minScore > 10 ||
     !["", "CN", "JP"].includes(country) ||
-    !["popular", "score"].includes(sort) ||
+    !["popular", "score", "rank"].includes(sort) ||
     search.length > 100
   )
     throw new CatalogError("Invalid query. Please adjust the filters.", 400);
@@ -108,7 +108,38 @@ type BangumiSubject = {
   rating?: { score?: number; total?: number };
   tags?: { name: string }[];
 };
+const bangumiItem = (item: BangumiSubject, locale: "en" | "zh"): Anime => ({
+  id: `bangumi:${item.id}`,
+  source: "bangumi",
+  title: locale === "zh" ? item.name_cn || item.name : item.name,
+  originalTitle: item.name,
+  image: safeImage(item.images?.large || item.images?.common),
+  summary: plainText(item.summary),
+  score: score(item.rating?.score),
+  votes: item.rating?.total ?? null,
+  year: item.date?.slice(0, 4) || "",
+  format: item.platform || "Animation",
+  tags: (item.tags || []).slice(0, 5).map((tag) => tag.name),
+  url: `https://bgm.tv/subject/${item.id}`,
+});
 async function bangumi(query: CatalogQuery): Promise<CatalogResult> {
+  if (query.sort === "rank") {
+    const ranking = await request<{ data: BangumiSubject[]; total: number }>(
+      `https://api.bgm.tv/v0/subjects?type=2&sort=rank&limit=${PAGE_SIZE}&offset=${(query.page - 1) * PAGE_SIZE}`,
+      {
+        headers: {
+          "User-Agent": "AnimeHub/1.0 (anime catalog; Next.js)",
+        },
+      },
+    );
+    return {
+      items: ranking.data.map((item) => bangumiItem(item, query.locale)),
+      page: query.page,
+      total: ranking.total,
+      hasNext: query.page * PAGE_SIZE < Math.min(ranking.total, 1000),
+      note: "Bangumi 排行榜使用站内加权排名，评分人数过少的条目不参与排序。",
+    };
+  }
   const response = await request<{ data: BangumiSubject[]; total: number }>(
     `https://api.bgm.tv/v0/search/subjects?limit=${PAGE_SIZE}&offset=${(query.page - 1) * PAGE_SIZE}`,
     {
@@ -132,22 +163,7 @@ async function bangumi(query: CatalogQuery): Promise<CatalogResult> {
     },
   );
   return {
-    items: response.data.map(
-      (item): Anime => ({
-        id: `bangumi:${item.id}`,
-        source: "bangumi",
-        title: query.locale === "zh" ? item.name_cn || item.name : item.name,
-        originalTitle: item.name,
-        image: safeImage(item.images?.large || item.images?.common),
-        summary: plainText(item.summary),
-        score: score(item.rating?.score),
-        votes: item.rating?.total ?? null,
-        year: item.date?.slice(0, 4) || "",
-        format: item.platform || "Animation",
-        tags: (item.tags || []).slice(0, 5).map((tag) => tag.name),
-        url: `https://bgm.tv/subject/${item.id}`,
-      }),
-    ),
+    items: response.data.map((item) => bangumiItem(item, query.locale)),
     page: query.page,
     total: response.total,
     hasNext: query.page * PAGE_SIZE < Math.min(response.total, 1000),
@@ -184,7 +200,7 @@ async function anilist(query: CatalogQuery): Promise<CatalogResult> {
         page: query.page,
         search: query.search || undefined,
         country: query.country || undefined,
-        sort: [query.sort === "score" ? "SCORE_DESC" : "POPULARITY_DESC"],
+        sort: [query.sort === "popular" ? "POPULARITY_DESC" : "SCORE_DESC"],
         min: query.minScore ? Math.ceil(query.minScore * 10) - 1 : undefined,
       },
     }),
@@ -250,9 +266,10 @@ async function tmdb(
     page: String(query.page),
     with_genres: "16",
     include_adult: "false",
-    sort_by: query.sort === "score" ? "vote_average.desc" : "popularity.desc",
+    sort_by:
+      query.sort === "popular" ? "popularity.desc" : "vote_average.desc",
     "vote_average.gte": String(query.minScore),
-    "vote_count.gte": query.sort === "score" ? "50" : "0",
+    "vote_count.gte": query.sort === "popular" ? "0" : "50",
   });
   if (query.country) params.set("with_origin_country", query.country);
   if (!token && key) params.set("api_key", key);
@@ -308,7 +325,7 @@ async function kitsu(query: CatalogQuery): Promise<CatalogResult> {
   const params = new URLSearchParams({
     "page[limit]": String(PAGE_SIZE),
     "page[offset]": String((query.page - 1) * PAGE_SIZE),
-    sort: query.sort === "score" ? "-averageRating" : "-userCount",
+    sort: query.sort === "popular" ? "-userCount" : "-averageRating",
   });
   if (query.search) params.set("filter[text]", query.search);
   const response = await request<{

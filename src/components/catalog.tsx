@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowDownWideNarrow,
   ArrowRight,
@@ -8,389 +8,24 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Clapperboard,
-  Compass,
-  ExternalLink,
-  Film,
   Globe2,
-  Moon,
   Search,
   SlidersHorizontal,
   Sparkles,
   Star,
-  Sun,
-  X,
 } from "lucide-react";
+import { Poster } from "./poster";
+import { SiteFooter, SiteHeader } from "./site-chrome";
+import { loadWatchlist, writeWatchlist } from "@/lib/watchlist";
 import {
   sources,
   type Anime,
   type CatalogResult,
-  type DetailData,
   type Source,
 } from "@/lib/types";
 
-const STORAGE_KEY = "anime-hub:watchlist:v1";
-function Poster({ anime }: { anime: Anime }) {
-  const [failed, setFailed] = useState(false);
-  return anime.image && !failed ? (
-    <img
-      src={anime.image}
-      alt={anime.title}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-    />
-  ) : (
-    <div className="poster-fallback">
-      <Film size={30} />
-      <span>{anime.title}</span>
-    </div>
-  );
-}
-function CreditRow({ person }: { person: DetailData["credits"][number] }) {
-  return (
-    <li>
-      <span className="credit-avatar">
-        {person.image ? (
-          <img
-            src={person.image}
-            alt=""
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          person.name.slice(0, 1)
-        )}
-      </span>
-      <span className="credit-name">{person.name}</span>
-      <span className="credit-role">{person.role}</span>
-    </li>
-  );
-}
+const detailLink = (anime: Anime) => `/anime?id=${encodeURIComponent(anime.id)}`;
 
-function RelatedGrid({
-  items,
-  onPick,
-}: {
-  items: Anime[];
-  onPick: (item: Anime) => void;
-}) {
-  return (
-    <div className="related-grid">
-      {items.map((item) => (
-        <button key={item.id} onClick={() => onPick(item)}>
-          <span className="related-poster">
-            <Poster anime={item} />
-          </span>
-          <span className="related-title">{item.title}</span>
-          <span className="related-meta">
-            {item.score?.toFixed(1) || "—"} · {item.year || "—"}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-const PROVIDER_KINDS = [
-  { key: "flatrate", label: "订阅" },
-  { key: "rent", label: "租借" },
-  { key: "buy", label: "购买" },
-] as const;
-
-function Detail({
-  anime,
-  saved,
-  toggle,
-  close,
-  onPick,
-}: {
-  anime: Anime;
-  saved: boolean;
-  toggle: () => void;
-  close: () => void;
-  onPick: (item: Anime) => void;
-}) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [detail, setDetail] = useState<DetailData | null>(null);
-  const [error, setError] = useState("");
-  const [tab, setTab] = useState("reviews");
-  useEffect(() => {
-    dialog.current?.showModal();
-  }, []);
-  useEffect(() => {
-    const controller = new AbortController();
-    setDetail(null);
-    setError("");
-    setTab("reviews");
-    dialog.current?.scrollTo({ top: 0 });
-    fetch(`/api/detail?id=${encodeURIComponent(anime.id)}&locale=zh`, {
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "详情加载失败");
-        if (!controller.signal.aborted) setDetail(data as DetailData);
-      })
-      .catch((cause) => {
-        if (!controller.signal.aborted && cause.name !== "AbortError")
-          setError(cause.message || "详情加载失败");
-      });
-    return () => controller.abort();
-  }, [anime.id]);
-  const tabs = detail
-    ? [
-        { key: "reviews", label: "评论", count: detail.reviews.length },
-        { key: "watch", label: "观看渠道", count: detail.providers.length },
-        { key: "credits", label: "演职员", count: detail.credits.length },
-        {
-          key: "recommendations",
-          label: "推荐",
-          count: detail.recommendations.length,
-        },
-        { key: "similar", label: "相似", count: detail.similar.length },
-        { key: "images", label: "图集", count: detail.images.length },
-        { key: "videos", label: "视频", count: detail.videos.length },
-      ].filter((item) => item.count > 0)
-    : [];
-  const active = tabs.some((item) => item.key === tab)
-    ? tab
-    : tabs[0]?.key || "";
-  const genres = detail?.genres.length ? detail.genres : anime.tags;
-  return (
-    <dialog
-      ref={dialog}
-      className="detail-dialog"
-      onCancel={close}
-      onClick={(event) => {
-        if (event.target === dialog.current) close();
-      }}
-      aria-labelledby="detail-title"
-    >
-      <button
-        className="icon-button close"
-        aria-label="关闭详情"
-        onClick={close}
-      >
-        <X size={20} />
-      </button>
-      <div className={`detail-banner${detail?.backdrop ? "" : " is-poster"}`}>
-        <img
-          src={detail?.backdrop || anime.image}
-          alt=""
-          referrerPolicy="no-referrer"
-        />
-      </div>
-      <div className="detail-body">
-        <aside className="detail-poster-lg">
-          <Poster anime={anime} />
-        </aside>
-        <article>
-          <span className="eyebrow">
-            {sources[anime.source]} · {anime.format}
-            {anime.year ? ` · ${anime.year}` : ""}
-          </span>
-          <h2 id="detail-title">{anime.title}</h2>
-          {anime.originalTitle && (
-            <p className="detail-original">{anime.originalTitle}</p>
-          )}
-          <div className="detail-badges">
-            <span className="rating-badge">
-              <Star size={12} fill="currentColor" />
-              {anime.score?.toFixed(1) || "暂无评分"}
-            </span>
-            <span className="muted">
-              {anime.votes == null
-                ? "评分人数未提供"
-                : `${anime.votes.toLocaleString()} 人评分`}
-            </span>
-            {detail?.date && <span className="muted">{detail.date}</span>}
-            {detail?.runtime && <span className="muted">{detail.runtime}</span>}
-          </div>
-          {genres.length > 0 && (
-            <div className="tags">
-              {genres.map((tag) => (
-                <span key={tag}>{tag}</span>
-              ))}
-            </div>
-          )}
-          {detail?.tagline && <p className="tagline">{detail.tagline}</p>}
-          <p className="synopsis">{anime.summary || "数据源暂未提供简介。"}</p>
-          <div className="detail-actions">
-            <button className="primary" onClick={toggle}>
-              {saved ? <Check size={16} /> : <Bookmark size={16} />}
-              {saved ? "已加入片单" : "加入想看"}
-            </button>
-            <a
-              className="button"
-              href={anime.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              来源条目 <ExternalLink size={15} />
-            </a>
-          </div>
-        </article>
-      </div>
-      {error && (
-        <p className="detail-status error" role="alert">
-          {error}
-        </p>
-      )}
-      {!detail && !error && (
-        <p className="detail-status" aria-busy="true">
-          正在加载详情…
-        </p>
-      )}
-      {detail && tabs.length > 0 && (
-        <>
-          <div className="detail-tabs" role="tablist" aria-label="详情分区">
-            {tabs.map((item) => (
-              <button
-                key={item.key}
-                id={`detail-tab-${item.key}`}
-                role="tab"
-                aria-selected={active === item.key}
-                onClick={() => setTab(item.key)}
-              >
-                {item.label}
-                <span className="tab-count">{item.count}</span>
-              </button>
-            ))}
-          </div>
-          <div
-            className="detail-panel"
-            role="tabpanel"
-            aria-labelledby={`detail-tab-${active}`}
-          >
-            {active === "reviews" && (
-              <ul className="review-list">
-                {detail.reviews.map((review, index) => (
-                  <li key={`${review.author}-${index}`}>
-                    <div className="review-head">
-                      <strong>{review.author}</strong>
-                      {review.rating != null && (
-                        <span className="rating-badge">
-                          <Star size={11} fill="currentColor" />
-                          {review.rating.toFixed(1)}
-                        </span>
-                      )}
-                      <span className="muted">{review.date}</span>
-                    </div>
-                    <p>{review.content}</p>
-                    {review.url && (
-                      <a
-                        className="review-link"
-                        href={review.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        查看原文 <ExternalLink size={12} />
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {active === "watch" && (
-              <div className="provider-columns">
-                {PROVIDER_KINDS.map((kind) => {
-                  const list = detail.providers.filter(
-                    (provider) => provider.kind === kind.key,
-                  );
-                  return (
-                    <section key={kind.key}>
-                      <h3>{kind.label}</h3>
-                      {list.length === 0 ? (
-                        <p className="detail-unavailable">
-                          <X size={13} /> 暂不可用
-                        </p>
-                      ) : (
-                        <ul className="provider-list">
-                          {list.map((provider) => (
-                            <li key={`${kind.key}-${provider.name}`}>
-                              {provider.logo ? (
-                                <img
-                                  src={provider.logo}
-                                  alt=""
-                                  loading="lazy"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <span className="provider-dot">
-                                  {provider.name.slice(0, 1)}
-                                </span>
-                              )}
-                              {provider.url ? (
-                                <a
-                                  href={provider.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  {provider.name}
-                                </a>
-                              ) : (
-                                provider.name
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </section>
-                  );
-                })}
-              </div>
-            )}
-            {active === "credits" && (
-              <ul className="credit-list">
-                {detail.credits.map((person, index) => (
-                  <CreditRow key={`${person.name}-${index}`} person={person} />
-                ))}
-              </ul>
-            )}
-            {active === "recommendations" && (
-              <RelatedGrid items={detail.recommendations} onPick={onPick} />
-            )}
-            {active === "similar" && (
-              <RelatedGrid items={detail.similar} onPick={onPick} />
-            )}
-            {active === "images" && (
-              <div className="image-grid">
-                {detail.images.map((url) => (
-                  <img
-                    key={url}
-                    src={url}
-                    alt=""
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
-                ))}
-              </div>
-            )}
-            {active === "videos" && (
-              <div className="video-grid">
-                {detail.videos.map((video) => (
-                  <figure key={video.key}>
-                    <iframe
-                      src={`https://www.youtube.com/embed/${video.key}?rel=0&modestbranding=1`}
-                      title={video.name}
-                      loading="lazy"
-                      allowFullScreen
-                    />
-                    <figcaption>
-                      {video.name}
-                      {video.name === video.type ? "" : ` · ${video.type}`}
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </dialog>
-  );
-}
 export function Catalog() {
   const [source, setSource] = useState<Source>("bangumi");
   const [searchInput, setSearchInput] = useState("");
@@ -403,38 +38,12 @@ export function Catalog() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
-  const [selected, setSelected] = useState<Anime | null>(null);
   const [saved, setSaved] = useState<Anime[]>([]);
   const [showSaved, setShowSaved] = useState(false);
-  const [dark, setDark] = useState(true);
   const [storageMessage, setStorageMessage] = useState("");
   useEffect(() => {
-    try {
-      const list: unknown = JSON.parse(
-        localStorage.getItem(STORAGE_KEY) || "[]",
-      );
-      if (Array.isArray(list))
-        setSaved(
-          list.filter(
-            (item): item is Anime =>
-              item &&
-              typeof item.id === "string" &&
-              typeof item.title === "string" &&
-              Object.hasOwn(sources, item.source) &&
-              Array.isArray(item.tags) &&
-              typeof item.url === "string" &&
-              item.url.startsWith("https://"),
-          ),
-        );
-      const theme = localStorage.getItem("anime-hub:theme");
-      if (theme === "light") setDark(false);
-    } catch {
-      setStorageMessage("浏览器存储不可用，片单仅在本次访问中保留。");
-    }
+    setSaved(loadWatchlist());
   }, []);
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-  }, [dark]);
   useEffect(() => {
     if (showSaved) return;
     const controller = new AbortController();
@@ -470,11 +79,8 @@ export function Catalog() {
       ? saved.filter((item) => item.id !== anime.id)
       : [...saved, anime];
     setSaved(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
+    if (!writeWatchlist(next))
       setStorageMessage("无法保存到浏览器，片单仅在本次访问中保留。");
-    }
   }
   function changeSource(value: Source) {
     setSource(value);
@@ -490,44 +96,12 @@ export function Catalog() {
   const busy = !showSaved && loading;
   return (
     <div className="site-shell">
-      <header className="header">
-        <a href="/" className="brand" aria-label="映番首页">
-          <span className="brand-mark">
-            <Clapperboard size={23} />
-          </span>
-          映番
-          <span className="brand-divider" />
-          <span className="brand-sub">ANIME JOURNAL</span>
-        </a>
-        <nav aria-label="主导航">
-          <button
-            className={!showSaved ? "nav-active" : ""}
-            onClick={() => setShowSaved(false)}
-          >
-            <Compass size={16} />
-            发现
-          </button>
-          <button
-            className={showSaved ? "nav-active" : ""}
-            onClick={() => setShowSaved(true)}
-          >
-            <Bookmark size={16} />
-            我的片单<span className="count">{saved.length}</span>
-          </button>
-        </nav>
-        <button
-          className="icon-button theme-button"
-          aria-label={dark ? "切换浅色主题" : "切换深色主题"}
-          onClick={() => {
-            setDark(!dark);
-            try {
-              localStorage.setItem("anime-hub:theme", dark ? "light" : "dark");
-            } catch {}
-          }}
-        >
-          {dark ? <Sun size={19} /> : <Moon size={19} />}
-        </button>
-      </header>
+      <SiteHeader
+        active={showSaved ? "saved" : "discover"}
+        savedCount={saved.length}
+        onDiscover={() => setShowSaved(false)}
+        onSaved={() => setShowSaved(true)}
+      />
       <main>
         <section className="intro">
           <div>
@@ -685,7 +259,7 @@ export function Catalog() {
             aria-label="正在加载动画"
             aria-busy="true"
           >
-            {Array.from({ length: 24 }, (_, index) => (
+            {Array.from({ length: 16 }, (_, index) => (
               <div className="skeleton-card" key={index}>
                 <div />
                 <span />
@@ -738,9 +312,9 @@ export function Catalog() {
                     style={{ animationDelay: `${Math.min(index, 11) * 25}ms` }}
                   >
                     <div className="poster-wrap">
-                      <button
+                      <a
                         className="poster-open"
-                        onClick={() => setSelected(anime)}
+                        href={detailLink(anime)}
                         aria-label={`查看 ${anime.title}`}
                       >
                         <Poster anime={anime} />
@@ -749,7 +323,7 @@ export function Catalog() {
                         <span className="poster-detail">
                           查看详情 <ArrowRight size={15} />
                         </span>
-                      </button>
+                      </a>
                       <button
                         className={`save-button ${saved.some((item) => item.id === anime.id) ? "is-saved" : ""}`}
                         aria-label={`${saved.some((item) => item.id === anime.id) ? "取消收藏" : "收藏"} ${anime.title}`}
@@ -763,9 +337,7 @@ export function Catalog() {
                       </button>
                     </div>
                     <div className="card-title">
-                      <button onClick={() => setSelected(anime)}>
-                        {anime.title}
-                      </button>
+                      <a href={detailLink(anime)}>{anime.title}</a>
                       <span className="rating">
                         <Star size={11} fill="currentColor" />
                         {anime.score?.toFixed(1) || "—"}
@@ -813,29 +385,7 @@ export function Catalog() {
           </p>
         )}
       </main>
-      <footer>
-        <span className="footer-brand">
-          <Clapperboard size={16} />
-          映番 <span>记录热爱，发现故事。</span>
-        </span>
-        <span>资料来自 Bangumi · AniList · TMDB · Kitsu</span>
-        <a
-          href="https://github.com/plotwist-app/plotwist"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          UI adapted from Plotwist <ExternalLink size={12} />
-        </a>
-      </footer>
-      {selected && (
-        <Detail
-          anime={selected}
-          saved={saved.some((item) => item.id === selected.id)}
-          toggle={() => toggleSaved(selected)}
-          close={() => setSelected(null)}
-          onPick={setSelected}
-        />
-      )}
+      <SiteFooter />
     </div>
   );
 }

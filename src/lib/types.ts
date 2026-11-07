@@ -44,13 +44,14 @@ export type DetailData = {
   providers: Provider[];
   reviews: Review[];
 };
+export type DetailResult = { item: Anime; detail: DetailData };
 export type CatalogQuery = {
   source: Source;
   locale: "en" | "zh";
   search: string;
   page: number;
   country: "" | "CN" | "JP";
-  sort: "popular" | "score";
+  sort: "popular" | "score" | "rank";
   minScore: number;
 };
 export type CatalogResult = {

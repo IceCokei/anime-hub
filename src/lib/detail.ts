@@ -10,6 +10,7 @@ import {
   sources,
   type Anime,
   type DetailData,
+  type DetailResult,
   type Provider,
   type Source,
 } from "./types";
@@ -56,7 +57,7 @@ type TmdbItem = {
 };
 type TmdbImage = { file_path: string };
 type TmdbProvider = { provider_name: string; logo_path?: string };
-type TmdbDetail = {
+type TmdbDetail = TmdbItem & {
   backdrop_path?: string | null;
   tagline?: string;
   release_date?: string;
@@ -106,7 +107,7 @@ async function tmdbDetail(
   id: string,
   locale: Locale,
   env: CatalogEnv,
-): Promise<DetailData> {
+): Promise<DetailResult> {
   const token = env.TMDB_READ_TOKEN;
   const key = env.TMDB_API_KEY;
   if (!token && !key)
@@ -176,40 +177,43 @@ async function tmdbDetail(
       image: photo(person.profile_path),
     }));
   return {
-    backdrop: data.backdrop_path
-      ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}`
-      : "",
-    tagline: data.tagline || "",
-    date: data.release_date || data.first_air_date || "",
-    genres: (data.genres || []).map((genre) => genre.name),
-    runtime: runtime ? `${runtime} min` : "",
-    credits: [
-      ...directors,
-      ...(data.credits?.cast || []).slice(0, 18).map((person) => ({
-        name: person.name,
-        role: person.character || "",
-        image: photo(person.profile_path),
+    item: toAnime(data),
+    detail: {
+      backdrop: data.backdrop_path
+        ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}`
+        : "",
+      tagline: data.tagline || "",
+      date: data.release_date || data.first_air_date || "",
+      genres: (data.genres || []).map((genre) => genre.name),
+      runtime: runtime ? `${runtime} min` : "",
+      credits: [
+        ...directors,
+        ...(data.credits?.cast || []).slice(0, 18).map((person) => ({
+          name: person.name,
+          role: person.character || "",
+          image: photo(person.profile_path),
+        })),
+      ],
+      recommendations: (data.recommendations?.results || [])
+        .slice(0, 18)
+        .map(toAnime),
+      similar: (data.similar?.results || []).slice(0, 18).map(toAnime),
+      images: (data.images?.backdrops || [])
+        .slice(0, 18)
+        .map((image) => `https://image.tmdb.org/t/p/w780${image.file_path}`),
+      videos: (data.videos?.results || [])
+        .filter((video) => video.site === "YouTube")
+        .slice(0, 12)
+        .map((video) => ({ key: video.key, name: video.name, type: video.type })),
+      providers,
+      reviews: (data.reviews?.results || []).slice(0, 8).map((review) => ({
+        author: review.author,
+        rating: review.author_details?.rating ?? null,
+        content: clip(plainText(review.content)),
+        date: review.created_at?.slice(0, 10) || "",
+        url: review.url,
       })),
-    ],
-    recommendations: (data.recommendations?.results || [])
-      .slice(0, 18)
-      .map(toAnime),
-    similar: (data.similar?.results || []).slice(0, 18).map(toAnime),
-    images: (data.images?.backdrops || [])
-      .slice(0, 18)
-      .map((image) => `https://image.tmdb.org/t/p/w780${image.file_path}`),
-    videos: (data.videos?.results || [])
-      .filter((video) => video.site === "YouTube")
-      .slice(0, 12)
-      .map((video) => ({ key: video.key, name: video.name, type: video.type })),
-    providers,
-    reviews: (data.reviews?.results || []).slice(0, 8).map((review) => ({
-      author: review.author,
-      rating: review.author_details?.rating ?? null,
-      content: clip(plainText(review.content)),
-      date: review.created_at?.slice(0, 10) || "",
-      url: review.url,
-    })),
+    },
   };
 }
 
@@ -226,7 +230,7 @@ type AniMedia = {
   genres?: string[];
   type?: string;
 };
-type AniDetail = {
+type AniDetail = AniMedia & {
   bannerImage?: string;
   duration?: number;
   startDate?: { year?: number; month?: number; day?: number };
@@ -257,14 +261,14 @@ type AniDetail = {
   };
 };
 const media = `id title { native romaji english } coverImage { extraLarge } description(asHtml: false) averageScore startDate { year } format genres type`;
-async function anilistDetail(id: string, locale: Locale): Promise<DetailData> {
+async function anilistDetail(id: string, locale: Locale): Promise<DetailResult> {
   const response = await request<{ data?: { Media: AniDetail } }>(
     "https://graphql.anilist.co",
     {
       method: "POST",
       headers: { "Content-Type": "application/json", ...BGM_HEADERS },
       body: JSON.stringify({
-        query: `query ($id: Int) { Media(id: $id, type: ANIME) { bannerImage duration startDate { year month day } trailer { id site } characters(sort: ROLE, perPage: 14) { edges { role node { name { full } image { large } } } } staff(perPage: 6) { edges { role node { name { full } image { large } } } } recommendations(sort: RATING_DESC, perPage: 14) { nodes { mediaRecommendation { ${media} } } } relations { edges { node { ${media} } } } externalLinks { site url type } reviews(perPage: 6, sort: RATING_DESC) { nodes { summary score createdAt siteUrl user { name } } } } }`,
+        query: `query ($id: Int) { Media(id: $id, type: ANIME) { ${media} bannerImage duration startDate { year month day } trailer { id site } characters(sort: ROLE, perPage: 14) { edges { role node { name { full } image { large } } } } staff(perPage: 6) { edges { role node { name { full } image { large } } } } recommendations(sort: RATING_DESC, perPage: 14) { nodes { mediaRecommendation { ${media} } } } relations { edges { node { ${media} } } } externalLinks { site url type } reviews(perPage: 6, sort: RATING_DESC) { nodes { summary score createdAt siteUrl user { name } } } } }`,
         variables: { id: Number(id) },
       }),
     },
@@ -300,59 +304,70 @@ async function anilistDetail(id: string, locale: Locale): Promise<DetailData> {
     image: safeImage(edge.node.image?.large),
   });
   return {
-    ...empty(),
-    backdrop: safeImage(data.bannerImage),
-    date: start?.year
-      ? [start.year, start.month, start.day]
-          .filter(Boolean)
-          .map((part) => String(part).padStart(2, "0"))
-          .join("-")
-      : "",
-    runtime: data.duration ? `${data.duration} min` : "",
-    credits: [
-      ...(data.staff?.edges || []).map((edge) => person(edge, edge.role || "")),
-      ...(data.characters?.edges || []).map((edge) =>
-        person(edge, edge.role || ""),
-      ),
-    ],
-    recommendations: (data.recommendations?.nodes || [])
-      .map((node) => node.mediaRecommendation)
-      .filter((item): item is AniMedia => Boolean(item))
-      .map(toAnime),
-    similar: (data.relations?.edges || [])
-      .filter((edge) => edge.node.type === "ANIME")
-      .map((edge) => toAnime(edge.node)),
-    videos:
-      data.trailer?.site === "youtube" && data.trailer.id
-        ? [{ key: data.trailer.id, name: "Trailer", type: "Trailer" }]
-        : [],
-    providers: (data.externalLinks || [])
-      .filter((link) => link.type === "STREAMING" && link.url.startsWith("https://"))
-      .map((link) => ({
-        name: link.site,
-        logo: "",
-        kind: "flatrate",
-        url: link.url,
-      })),
-    reviews: (data.reviews?.nodes || []).map((review) => ({
-      author: review.user?.name || "AniList",
-      rating: review.score ? review.score / 10 : null,
-      content: clip(plainText(review.summary)),
-      date: review.createdAt
-        ? new Date(review.createdAt * 1000).toISOString().slice(0, 10)
+    item: toAnime(data),
+    detail: {
+      ...empty(),
+      backdrop: safeImage(data.bannerImage),
+      date: start?.year
+        ? [start.year, start.month, start.day]
+            .filter(Boolean)
+            .map((part) => String(part).padStart(2, "0"))
+            .join("-")
         : "",
-      url: review.siteUrl || "",
-    })),
+      runtime: data.duration ? `${data.duration} min` : "",
+      credits: [
+        ...(data.staff?.edges || []).map((edge) => person(edge, edge.role || "")),
+        ...(data.characters?.edges || []).map((edge) =>
+          person(edge, edge.role || ""),
+        ),
+      ],
+      recommendations: (data.recommendations?.nodes || [])
+        .map((node) => node.mediaRecommendation)
+        .filter((item): item is AniMedia => Boolean(item))
+        .map(toAnime),
+      similar: (data.relations?.edges || [])
+        .filter((edge) => edge.node.type === "ANIME")
+        .map((edge) => toAnime(edge.node)),
+      videos:
+        data.trailer?.site === "youtube" && data.trailer.id
+          ? [{ key: data.trailer.id, name: "Trailer", type: "Trailer" }]
+          : [],
+      providers: (data.externalLinks || [])
+        .filter(
+          (link) => link.type === "STREAMING" && link.url.startsWith("https://"),
+        )
+        .map((link) => ({
+          name: link.site,
+          logo: "",
+          kind: "flatrate",
+          url: link.url,
+        })),
+      reviews: (data.reviews?.nodes || []).map((review) => ({
+        author: review.user?.name || "AniList",
+        rating: review.score ? review.score / 10 : null,
+        content: clip(plainText(review.summary)),
+        date: review.createdAt
+          ? new Date(review.createdAt * 1000).toISOString().slice(0, 10)
+          : "",
+        url: review.siteUrl || "",
+      })),
+    },
   };
 }
 
 /* ---------- Bangumi ---------- */
 type BgmImages = { large?: string; common?: string; medium?: string };
-async function bangumiDetail(id: string): Promise<DetailData> {
+async function bangumiDetail(id: string): Promise<DetailResult> {
   const base = `https://api.bgm.tv/v0/subjects/${id}`;
   const [subject, characters, persons, related] = await Promise.all([
     request<{
+      name?: string;
+      name_cn?: string;
       date?: string;
+      platform?: string;
+      summary?: string;
+      images?: BgmImages;
+      rating?: { score?: number; total?: number };
       tags?: { name: string }[];
       eps?: number;
     }>(base, { headers: BGM_HEADERS }),
@@ -377,39 +392,63 @@ async function bangumiDetail(id: string): Promise<DetailData> {
   ]);
   const animeRelated = related.filter((item) => item.type === 2);
   return {
-    ...empty(),
-    date: subject.date || "",
-    genres: (subject.tags || []).slice(0, 6).map((tag) => tag.name),
-    runtime: subject.eps ? `${subject.eps} eps` : "",
-    credits: [...persons.slice(0, 8), ...characters.slice(0, 12)].map((item) => ({
-      name: item.name,
-      role: item.relation || "",
-      image: safeImage(item.images?.medium || item.images?.large),
-    })),
-    similar: (animeRelated.length ? animeRelated : related).slice(0, 18).map(
-      (item): Anime => ({
-        id: `bangumi:${item.id}`,
-        source: "bangumi",
-        title: item.name_cn || item.name,
-        originalTitle: item.name,
-        image: safeImage(item.images?.large || item.images?.common),
-        summary: "",
-        score: null,
-        votes: null,
-        year: "",
-        format: item.relation || "Animation",
-        tags: [],
-        url: `https://bgm.tv/subject/${item.id}`,
-      }),
-    ),
+    item: {
+      id: `bangumi:${id}`,
+      source: "bangumi",
+      title: subject.name_cn || subject.name || "Untitled",
+      originalTitle: subject.name || "",
+      image: safeImage(subject.images?.large || subject.images?.common),
+      summary: plainText(subject.summary),
+      score: score(subject.rating?.score),
+      votes: subject.rating?.total ?? null,
+      year: subject.date?.slice(0, 4) || "",
+      format: subject.platform || "Animation",
+      tags: (subject.tags || []).slice(0, 5).map((tag) => tag.name),
+      url: `https://bgm.tv/subject/${id}`,
+    },
+    detail: {
+      ...empty(),
+      date: subject.date || "",
+      genres: (subject.tags || []).slice(0, 6).map((tag) => tag.name),
+      runtime: subject.eps ? `${subject.eps} eps` : "",
+      credits: [...persons.slice(0, 8), ...characters.slice(0, 12)].map(
+        (item) => ({
+          name: item.name,
+          role: item.relation || "",
+          image: safeImage(item.images?.medium || item.images?.large),
+        }),
+      ),
+      similar: (animeRelated.length ? animeRelated : related).slice(0, 18).map(
+        (item): Anime => ({
+          id: `bangumi:${item.id}`,
+          source: "bangumi",
+          title: item.name_cn || item.name,
+          originalTitle: item.name,
+          image: safeImage(item.images?.large || item.images?.common),
+          summary: "",
+          score: null,
+          votes: null,
+          year: "",
+          format: item.relation || "Animation",
+          tags: [],
+          url: `https://bgm.tv/subject/${item.id}`,
+        }),
+      ),
+    },
   };
 }
 
 /* ---------- Kitsu ---------- */
-async function kitsuDetail(id: string): Promise<DetailData> {
+async function kitsuDetail(id: string): Promise<DetailResult> {
   const response = await request<{
     data: {
       attributes: {
+        canonicalTitle?: string;
+        titles?: { en?: string; en_jp?: string; ja_jp?: string };
+        synopsis?: string;
+        averageRating?: string;
+        subtype?: string;
+        posterImage?: { large?: string; original?: string };
         coverImage?: { large?: string; original?: string };
         youtubeVideoId?: string;
         startDate?: string;
@@ -421,17 +460,42 @@ async function kitsuDetail(id: string): Promise<DetailData> {
     headers: { Accept: "application/vnd.api+json" },
   });
   const attributes = response.data.attributes;
+  const genres = (response.included || [])
+    .filter((item) => item.type === "genres" && item.attributes.name)
+    .map((item) => item.attributes.name as string);
   return {
-    ...empty(),
-    backdrop: safeImage(attributes.coverImage?.large || attributes.coverImage?.original),
-    date: attributes.startDate || "",
-    runtime: attributes.episodeLength ? `${attributes.episodeLength} min` : "",
-    genres: (response.included || [])
-      .filter((item) => item.type === "genres" && item.attributes.name)
-      .map((item) => item.attributes.name as string),
-    videos: attributes.youtubeVideoId
-      ? [{ key: attributes.youtubeVideoId, name: "Trailer", type: "Trailer" }]
-      : [],
+    item: {
+      id: `kitsu:${id}`,
+      source: "kitsu",
+      title:
+        attributes.canonicalTitle ||
+        attributes.titles?.en ||
+        attributes.titles?.ja_jp ||
+        "Untitled",
+      originalTitle: attributes.titles?.ja_jp || "",
+      image: safeImage(
+        attributes.posterImage?.large || attributes.posterImage?.original,
+      ),
+      summary: plainText(attributes.synopsis),
+      score: score(attributes.averageRating, 10),
+      votes: null,
+      year: attributes.startDate?.slice(0, 4) || "",
+      format: attributes.subtype || "Animation",
+      tags: genres.slice(0, 5),
+      url: `https://kitsu.io/anime/${id}`,
+    },
+    detail: {
+      ...empty(),
+      backdrop: safeImage(
+        attributes.coverImage?.large || attributes.coverImage?.original,
+      ),
+      date: attributes.startDate || "",
+      runtime: attributes.episodeLength ? `${attributes.episodeLength} min` : "",
+      genres,
+      videos: attributes.youtubeVideoId
+        ? [{ key: attributes.youtubeVideoId, name: "Trailer", type: "Trailer" }]
+        : [],
+    },
   };
 }
 
@@ -439,7 +503,7 @@ export async function getDetail(
   value: string,
   locale: Locale,
   env: CatalogEnv = {},
-): Promise<DetailData> {
+): Promise<DetailResult> {
   const { source, id } = parseDetailId(value);
   if (source === "tmdb-tv" || source === "tmdb-movie")
     return tmdbDetail(source, id, locale, env);
