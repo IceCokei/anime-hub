@@ -1455,7 +1455,7 @@ html[data-theme="dark"] .home {
 }
 .home .hero {
   position: relative;
-  height: clamp(440px, 46vw, 665px);
+  height: clamp(340px, 34vw, 500px);
   overflow: hidden;
   background: var(--charcoal);
   color: #f4f6f6;
@@ -1525,7 +1525,7 @@ html[data-theme="dark"] .home {
 }
 .home .hero-body {
   position: absolute;
-  top: 150px;
+  top: 118px;
   left: 56px;
   z-index: 2;
   max-width: 640px;
@@ -1543,22 +1543,22 @@ html[data-theme="dark"] .home {
 }
 .home .hero-title {
   margin: 22px 0 0;
-  font-size: clamp(40px, 4.7vw, 67px);
+  font-size: clamp(34px, 3.6vw, 54px);
   font-weight: 900;
   line-height: 1.06;
   letter-spacing: -0.02em;
 }
 .home .hero-sub {
   max-width: 430px;
-  margin: 34px 0 0;
-  font-size: 17px;
+  margin: 24px 0 0;
+  font-size: 15px;
   line-height: 1.6;
   color: #dde4e4;
 }
 .home .hero-foot {
   position: absolute;
   right: 56px;
-  bottom: 58px;
+  bottom: 46px;
   left: 56px;
   z-index: 2;
   display: flex;
@@ -1626,7 +1626,8 @@ html[data-theme="dark"] .home {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 51px 0 18px;
+  padding: 34px 0 20px;
+  flex-wrap: wrap;
 }
 .home .source-left {
   display: flex;
@@ -1663,11 +1664,11 @@ html[data-theme="dark"] .home .source-tabs {
   white-space: nowrap;
 }
 .home .filters {
-  gap: 12px;
-  padding: 34px 0 0;
+  gap: 10px;
+  padding: 0;
 }
 .home .filters label {
-  height: 42px;
+  height: 38px;
   border-color: var(--hairline);
   background: var(--surface);
 }
@@ -1682,7 +1683,7 @@ html[data-theme="dark"] .home .source-tabs {
 }
 .home .filter-value {
   color: var(--ink-2);
-  font-size: 13px;
+  font-size: 12px;
 }
 .home .catalog-head {
   padding: 64px 0 22px;
@@ -1719,11 +1720,11 @@ html[data-theme="dark"] .home .source-tabs {
 }
 .home .poster-grid {
   display: grid;
-  grid-template-columns: 1.47fr repeat(4, minmax(0, 1fr));
-  align-items: end;
-  gap: 44px 18px;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  align-items: start;
+  gap: 26px 12px;
   min-height: 0;
-  padding: 34px 0 0;
+  padding: 28px 0 0;
 }
 .home .anime-card {
   display: flex;
@@ -1777,7 +1778,7 @@ html[data-theme="dark"] .home .poster-wrap {
   gap: 10px;
 }
 .home .card-title a {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 800;
 }
 .home .card-meta {
@@ -1790,21 +1791,22 @@ html[data-theme="dark"] .home .poster-wrap {
   text-overflow: ellipsis;
 }
 .home .rating {
-  padding: 4px 9px;
+  padding: 3px 7px;
   border-radius: 999px;
   background: var(--surface);
   color: var(--ink-2);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 .home .rating svg {
   color: var(--rose);
 }
-.home .anime-card:nth-child(5n + 1) .card-title a {
-  font-size: 22px;
+.home .poster-open img {
+  object-fit: contain;
+  background: #e7ebed;
 }
-.home .anime-card:nth-child(5n + 1) .card-meta {
-  font-size: 12px;
+html[data-theme="dark"] .home .poster-open img {
+  background: #1c2429;
 }
 .home .pager {
   display: flex;
@@ -1897,12 +1899,12 @@ html[data-theme="dark"] .home .skeleton-card small {
     left: 32px;
   }
   .home .poster-grid {
-    grid-template-columns: 1.47fr repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 }
 @media (max-width: 700px) {
   .home .hero {
-    height: 470px;
+    height: 380px;
   }
   .home .hero .header {
     margin-top: 16px;
@@ -1948,19 +1950,20 @@ html[data-theme="dark"] .home .skeleton-card small {
   }
   .home .source-row {
     display: block;
-    padding: 34px 0 16px;
+    padding: 26px 0 16px;
   }
   .home .source-left {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
+  .home .filters {
+    padding-top: 14px;
+  }
   .home .source-hint {
     display: none;
   }
-  .home .filters {
-    padding-top: 24px;
-  }
+
   .home .catalog-head {
     padding: 40px 0 18px;
   }
@@ -1978,19 +1981,19 @@ html[data-theme="dark"] .home .skeleton-card small {
     display: none;
   }
   .home .poster-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 28px 12px;
-  }
-  .home .anime-card:nth-child(5n + 1) .card-title a {
-    font-size: 16px;
-  }
-  .home .anime-card:nth-child(5n + 1) .card-meta {
-    font-size: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px 10px;
   }
   .home .pager {
-    align-items: flex-start;
+    align-items: center;
     flex-direction: column;
+    gap: 14px;
     margin-top: 36px;
+    text-align: center;
+  }
+  .home .pager-controls {
+    justify-content: center;
+    width: 100%;
   }
   .home footer {
     flex-wrap: wrap;

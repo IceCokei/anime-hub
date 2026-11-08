@@ -220,10 +220,7 @@ export function Catalog() {
                   ))}
                 </div>
               </div>
-              <span className="source-hint">独立评分 · 自由探索</span>
-            </div>
-            <div className="hairline" />
-            <div className="filters">
+              <div className="filters">
               <label>
                 <Globe2 size={16} />
                 <span className="filter-value">
@@ -291,7 +288,9 @@ export function Catalog() {
                   <option value="score">评分最高</option>
                 </select>
               </label>
+              </div>
             </div>
+            <div className="hairline" />
           </>
         )}
 
