@@ -25,10 +25,10 @@ export function SiteHeader({
   onDiscover,
   onSaved,
 }: HeaderProps) {
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState(false);
   useEffect(() => {
     try {
-      if (localStorage.getItem(THEME_KEY) === "light") setDark(false);
+      if (localStorage.getItem(THEME_KEY) === "dark") setDark(true);
     } catch {}
   }, []);
   useEffect(() => {

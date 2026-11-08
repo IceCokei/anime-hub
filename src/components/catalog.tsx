@@ -7,12 +7,8 @@ import {
   Bookmark,
   Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Globe2,
   Search,
-  SlidersHorizontal,
-  Sparkles,
   Star,
 } from "lucide-react";
 import { Poster } from "./poster";
@@ -109,195 +105,225 @@ export function Catalog() {
   }
   const items = showSaved ? saved : byNewest(result?.items || []);
   const busy = !showSaved && loading;
+  const heading = showSaved
+    ? "我的想看清单"
+    : search
+      ? `“${search}” 的搜索结果`
+      : country === "CN"
+        ? "国漫，正在发光"
+        : sort === "newest"
+          ? "最新上架"
+          : sort === "score"
+            ? "经得起时间的好作品"
+            : "大家都在看";
+  const subline = showSaved
+    ? `${items.length} 部已收藏`
+    : `${sources[source]}${
+        result?.total != null
+          ? ` · ${result.total.toLocaleString()} 部作品`
+          : " · 动画发现"
+      }`;
   return (
-    <div className="site-shell">
-      <SiteHeader
-        active={showSaved ? "saved" : "discover"}
-        savedCount={saved.length}
-        onDiscover={() => setShowSaved(false)}
-        onSaved={() => setShowSaved(true)}
-      />
-      <main>
-        <section className="intro">
-          <div>
-            <div className="eyebrow">
-              <span className="status-dot" /> YOUR NEXT GREAT STORY
-            </div>
-            <h1>{showSaved ? "留给下一次，心动。" : "好故事，值得被发现。"}</h1>
-            <p>
-              {showSaved
-                ? "把想看的世界收进片单，随时回来继续探索。"
-                : "从经典神作到新鲜国漫，找到属于你的下一部动画。"}
-            </p>
-          </div>
-          <div className="intro-note">
-            <Sparkles size={19} />
-            <span>
-              每一帧热爱
-              <br />
-              <strong>都有下一集</strong>
-            </span>
-          </div>
-        </section>
+    <div className="home">
+      <section className="hero">
+        <img
+          className="hero-bg"
+          src="/hero-discovery.jpg"
+          alt=""
+          fetchPriority="high"
+        />
+        <div className="hero-veil" aria-hidden="true" />
+        <SiteHeader
+          active={showSaved ? "saved" : "discover"}
+          savedCount={saved.length}
+          onDiscover={() => setShowSaved(false)}
+          onSaved={() => setShowSaved(true)}
+        />
+        <div className="hero-body">
+          <span className="mono hero-no">DISCOVERY / NO. 01</span>
+          <span className="mono hero-kicker">YOUR NEXT GREAT STORY</span>
+          <h1 className="hero-title">
+            {showSaved ? (
+              <>
+                留给下一次，
+                <br />
+                心动。
+              </>
+            ) : (
+              <>
+                好故事，
+                <br />
+                值得被发现。
+              </>
+            )}
+          </h1>
+          <p className="hero-sub">
+            {showSaved
+              ? "把想看的世界收进片单，随时回来继续探索。"
+              : "从经典神作到新鲜国漫，找到属于你的下一部动画。"}
+          </p>
+        </div>
+        <div className="hero-foot">
+          <span className="hero-rule" aria-hidden="true" />
+          <span className="hero-note">
+            每一帧热爱
+            <br />
+            <strong>都有下一集</strong>
+          </span>
+        </div>
+      </section>
+
+      <div className="page">
+        {!showSaved && (
+          <form
+            className="search-dock"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSearch(searchInput.trim());
+              setPage(1);
+            }}
+          >
+            <Search size={22} />
+            <input
+              aria-label="搜索动画"
+              placeholder={
+                source.startsWith("tmdb")
+                  ? "TMDB 发现模式 · 使用下方筛选"
+                  : "搜索动画名称，开启一个新世界…"
+              }
+              value={searchInput}
+              disabled={source.startsWith("tmdb")}
+              onChange={(event) => setSearchInput(event.target.value)}
+            />
+            <button className="search-go" disabled={source.startsWith("tmdb")}>
+              探索
+              <ArrowRight size={16} />
+            </button>
+          </form>
+        )}
+
         {!showSaved && (
           <>
-            <div className="source-bar">
-              <div className="source-label">
-                <Globe2 size={15} />
-                探索来源
-              </div>
-              <div className="source-tabs" role="group" aria-label="数据来源">
-                {Object.entries(sources).map(([key, name]) => (
-                  <button
-                    className={source === key ? "active" : ""}
-                    key={key}
-                    onClick={() => changeSource(key as Source)}
-                  >
-                    {source === key && <span className="source-dot" />}
-                    {name}
-                  </button>
-                ))}
+            <div className="source-row">
+              <div className="source-left">
+                <span className="source-label">探索来源</span>
+                <div className="source-tabs" role="group" aria-label="数据来源">
+                  {Object.entries(sources).map(([key, name]) => (
+                    <button
+                      className={source === key ? "active" : ""}
+                      key={key}
+                      onClick={() => changeSource(key as Source)}
+                    >
+                      {source === key && <span className="source-dot" />}
+                      {name}
+                    </button>
+                  ))}
+                </div>
               </div>
               <span className="source-hint">独立评分 · 自由探索</span>
             </div>
-            <section className="toolbar" aria-label="搜索和筛选">
-              <form
-                className="search"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setSearch(searchInput.trim());
-                  setPage(1);
-                }}
-              >
-                <Search size={18} />
-                <input
-                  aria-label="搜索动画"
-                  placeholder={
-                    source.startsWith("tmdb")
-                      ? "TMDB 发现模式 · 使用右侧筛选"
-                      : "搜索动画名称，开启一个新世界…"
-                  }
-                  value={searchInput}
-                  disabled={source.startsWith("tmdb")}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                />
-                <button
-                  aria-label="提交搜索"
-                  disabled={source.startsWith("tmdb")}
+            <div className="hairline" />
+            <div className="filters">
+              <label>
+                <Globe2 size={16} />
+                <span className="filter-value">
+                  {country === "CN"
+                    ? "中国 · 国漫"
+                    : country === "JP"
+                      ? "日本动画"
+                      : "全部产地"}
+                </span>
+                <ChevronDown size={14} />
+                <select
+                  aria-label="产地"
+                  value={country}
+                  disabled={source === "kitsu" || source === "douban"}
+                  onChange={(event) => {
+                    setCountry(event.target.value);
+                    setPage(1);
+                  }}
                 >
-                  <ArrowRight size={18} />
-                </button>
-              </form>
-              <div className="filters">
-                <label>
-                  <Globe2 size={15} />
-                  <span className="filter-value">
-                    {country === "CN"
-                      ? "中国 · 国漫"
-                      : country === "JP"
-                        ? "日本动画"
-                        : "全部产地"}
-                  </span>
-                  <ChevronDown size={14} />
-                  <select
-                    aria-label="产地"
-                    value={country}
-                    disabled={source === "kitsu" || source === "douban"}
-                    onChange={(event) => {
-                      setCountry(event.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">全部产地</option>
-                    <option value="CN">中国 · 国漫</option>
-                    <option value="JP">日本动画</option>
-                  </select>
-                </label>
-                <label>
-                  <Star size={15} />
-                  <span className="filter-value">
-                    {minScore === "0" ? "全部评分" : `${minScore} 分以上`}
-                  </span>
-                  <ChevronDown size={14} />
-                  <select
-                    aria-label="最低评分"
-                    value={minScore}
-                    onChange={(event) => {
-                      setMinScore(event.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="0">全部评分</option>
-                    <option value="7">7 分以上</option>
-                    <option value="8">8 分以上</option>
-                    <option value="9">9 分以上</option>
-                  </select>
-                </label>
-                <label>
-                  <ArrowDownWideNarrow size={15} />
-                  <span className="filter-value">
-                    {sort === "newest"
-                      ? "最新上架"
-                      : sort === "popular"
-                        ? "最多人关注"
-                        : "评分最高"}
-                  </span>
-                  <ChevronDown size={14} />
-                  <select
-                    aria-label="排序"
-                    value={sort}
-                    onChange={(event) => {
-                      setSort(event.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="newest">最新上架</option>
-                    <option value="popular">最多人关注</option>
-                    <option value="score">评分最高</option>
-                  </select>
-                </label>
-              </div>
-            </section>
+                  <option value="">全部产地</option>
+                  <option value="CN">中国 · 国漫</option>
+                  <option value="JP">日本动画</option>
+                </select>
+              </label>
+              <label>
+                <Star size={16} />
+                <span className="filter-value">
+                  {minScore === "0" ? "全部评分" : `${minScore} 分以上`}
+                </span>
+                <ChevronDown size={14} />
+                <select
+                  aria-label="最低评分"
+                  value={minScore}
+                  onChange={(event) => {
+                    setMinScore(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="0">全部评分</option>
+                  <option value="7">7 分以上</option>
+                  <option value="8">8 分以上</option>
+                  <option value="9">9 分以上</option>
+                </select>
+              </label>
+              <label>
+                <ArrowDownWideNarrow size={16} />
+                <span className="filter-value">
+                  {sort === "newest"
+                    ? "最新上架"
+                    : sort === "popular"
+                      ? "最多人关注"
+                      : "评分最高"}
+                </span>
+                <ChevronDown size={14} />
+                <select
+                  aria-label="排序"
+                  value={sort}
+                  onChange={(event) => {
+                    setSort(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="newest">最新上架</option>
+                  <option value="popular">最多人关注</option>
+                  <option value="score">评分最高</option>
+                </select>
+              </label>
+            </div>
           </>
         )}
-        <div className="section-heading">
-          <div>
-            <h2>
-              {showSaved
-                ? "我的想看清单"
-                : search
-                  ? `“${search}” 的搜索结果`
-                  : country === "CN"
-                    ? "国漫，正在发光"
-                    : sort === "newest"
-                      ? "最新上架"
-                      : sort === "score"
-                        ? "经得起时间的好作品"
-                        : "大家都在看"}
-            </h2>
-            <span>
-              {showSaved
-                ? `${items.length} 部已收藏`
-                : `${sources[source]}${result?.total != null ? ` · ${result.total.toLocaleString()} 部作品` : " · 动画发现"}`}
+
+        <div className="catalog-head">
+          <span className="mono catalog-no">
+            THE CURRENT SELECTION / {String(items.length).padStart(2, "0")} FRAMES
+          </span>
+          <div className="catalog-line">
+            <div className="catalog-heading">
+              <h2>{heading}</h2>
+              <span className="catalog-meta">{subline}</span>
+            </div>
+            <span className="catalog-note">
+              {showSaved ? "保存在本机" : "精选动画目录 ↗"}
             </span>
           </div>
-          <span className="view-label">
-            <SlidersHorizontal size={14} />
-            {showSaved ? "保存在本机" : "精选动画目录"}
-          </span>
         </div>
+        <div className="hairline" />
+
         {storageMessage && (
           <p role="status" className="notice">
             {storageMessage}
           </p>
         )}
+
         {busy ? (
           <div
             className="poster-grid"
             aria-label="正在加载动画"
             aria-busy="true"
           >
-            {Array.from({ length: 16 }, (_, index) => (
+            {Array.from({ length: 20 }, (_, index) => (
               <div className="skeleton-card" key={index}>
                 <div />
                 <span />
@@ -317,113 +343,108 @@ export function Catalog() {
               重新加载
             </button>
           </div>
+        ) : items.length === 0 ? (
+          <div className="empty">
+            <Bookmark size={32} />
+            <h3>
+              {showSaved ? "你的下一部好故事，还在路上" : "没有找到匹配的动画"}
+            </h3>
+            <p>
+              {showSaved
+                ? "点击海报上的收藏按钮，把喜欢的动画加入想看。"
+                : "试试其他关键词、放宽筛选，或继续翻页。"}
+            </p>
+            {showSaved && (
+              <button className="primary" onClick={() => setShowSaved(false)}>
+                去发现动画 <ArrowRight size={16} />
+              </button>
+            )}
+          </div>
         ) : (
-          <>
-            {items.length === 0 ? (
-              <div className="empty">
-                <Bookmark size={32} />
-                <h3>
-                  {showSaved
-                    ? "你的下一部好故事，还在路上"
-                    : "没有找到匹配的动画"}
-                </h3>
-                <p>
-                  {showSaved
-                    ? "点击海报上的收藏按钮，把喜欢的动画加入想看。"
-                    : "试试其他关键词、放宽筛选，或继续翻页。"}
-                </p>
-                {showSaved && (
-                  <button
-                    className="primary"
-                    onClick={() => setShowSaved(false)}
-                  >
-                    去发现动画 <ArrowRight size={16} />
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="poster-grid">
-                {items.map((anime, index) => (
-                  <article
-                    className="anime-card"
-                    key={anime.id}
-                    style={{ animationDelay: `${Math.min(index, 11) * 25}ms` }}
-                  >
-                    <div className="poster-wrap">
-                      <a
-                        className="poster-open"
-                        href={detailLink(anime)}
-                        aria-label={`查看 ${anime.title}`}
-                      >
-                        <Poster anime={anime} priority={index < 8} />
-                        <span className="poster-shade" />
-                        <span className="poster-format">{anime.format}</span>
-                        <span className="poster-detail">
-                          查看详情 <ArrowRight size={15} />
-                        </span>
-                      </a>
-                      <button
-                        className={`save-button ${saved.some((item) => item.id === anime.id) ? "is-saved" : ""}`}
-                        aria-label={`${saved.some((item) => item.id === anime.id) ? "取消收藏" : "收藏"} ${anime.title}`}
-                        onClick={() => toggleSaved(anime)}
-                      >
-                        {saved.some((item) => item.id === anime.id) ? (
-                          <Check size={17} />
-                        ) : (
-                          <Bookmark size={17} />
-                        )}
-                      </button>
-                    </div>
-                    <div className="card-title">
-                      <a href={detailLink(anime)}>{anime.title}</a>
-                      <span className="rating">
-                        <Star size={11} fill="currentColor" />
-                        {anime.score?.toFixed(1) || "—"}
-                      </span>
-                    </div>
-                    <div className="card-meta">
-                      <span>
-                        {anime.year || "年份待定"} · {anime.format}
-                      </span>
-                      <span>
-                        {anime.votes == null
-                          ? sources[anime.source]
-                          : `${anime.votes >= 10000 ? `${(anime.votes / 10000).toFixed(1)}万` : anime.votes} 人评分`}
-                      </span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-            {!showSaved && (
-              <div className="pagination">
-                <button
-                  disabled={page === 1}
-                  onClick={() => setPage((value) => value - 1)}
+          <div className="poster-grid">
+            {items.map((anime, index) => {
+              const isSaved = saved.some((item) => item.id === anime.id);
+              return (
+                <article
+                  className="anime-card"
+                  key={anime.id}
+                  style={{ animationDelay: `${Math.min(index, 11) * 25}ms` }}
                 >
-                  <ChevronLeft size={16} />
-                  上一页
-                </button>
-                <span>第 {page} 页</span>
-                <button
-                  disabled={!result?.hasNext}
-                  onClick={() => setPage((value) => value + 1)}
-                >
-                  下一页
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            )}
-          </>
+                  <span className="mono card-no">
+                    {String(index + 1).padStart(2, "0")} /{" "}
+                    {String(items.length).padStart(2, "0")}
+                  </span>
+                  <div className="poster-wrap">
+                    <a
+                      className="poster-open"
+                      href={detailLink(anime)}
+                      aria-label={`查看 ${anime.title}`}
+                    >
+                      <Poster anime={anime} priority={index < 5} />
+                      <span className="poster-shade" />
+                      <span className="mono card-format">{anime.format}</span>
+                      <span className="poster-detail">查看详情 ↗</span>
+                    </a>
+                    <button
+                      className={`save-button ${isSaved ? "is-saved" : ""}`}
+                      aria-label={`${isSaved ? "取消收藏" : "收藏"} ${anime.title}`}
+                      onClick={() => toggleSaved(anime)}
+                    >
+                      {isSaved ? <Check size={17} /> : <Bookmark size={17} />}
+                    </button>
+                  </div>
+                  <div className="card-title">
+                    <a href={detailLink(anime)}>{anime.title}</a>
+                    <span className="rating">
+                      <Star size={12} fill="currentColor" />
+                      {anime.score?.toFixed(1) || "—"}
+                    </span>
+                  </div>
+                  <span className="card-meta">
+                    {anime.year || "年份待定"} · {anime.format}
+                    {"  /  "}
+                    {anime.votes == null
+                      ? sources[anime.source]
+                      : `${anime.votes >= 10000 ? `${(anime.votes / 10000).toFixed(1)}万` : anime.votes} 人评分`}
+                  </span>
+                </article>
+              );
+            })}
+          </div>
         )}
+
+        {!showSaved && (
+          <div className="pager">
+            <span className="mono pager-no">ANIME JOURNAL  /  DISCOVER</span>
+            <div className="pager-controls">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((value) => value - 1)}
+              >
+                上一页
+              </button>
+              <span className="pager-current">第 {page} 页</span>
+              <button
+                disabled={!result?.hasNext}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                下一页
+              </button>
+            </div>
+          </div>
+        )}
+
         {!showSaved && (
           <p className="data-note">
             {result?.note ||
               "评分来自当前数据源，统一显示为十分制；不同站点评分不直接比较。"}
           </p>
         )}
-      </main>
-      <SiteFooter />
+        <div className="hairline" />
+        <SiteFooter />
+      </div>
     </div>
   );
 }
+
+
